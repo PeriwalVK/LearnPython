@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRCTC Lite - Fast Booking Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #d84315;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #d84315;
+        }
+        
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #d84315;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #bf360c;
+        }
+        
+        .quick-links {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .quick-links a {
+            display: block;
+            padding: 10px;
+            margin: 5px 0;
+            background: #f5f5f5;
+            color: #333;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .quick-links a:hover {
+            background: #e0e0e0;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #1976d2;
+        }
+        
+        .station-code {
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚂 IRCTC Lite</h1>
+        <p class="subtitle">Fast, clean interface for booking train tickets</p>
+
+        <div class="info-box">
+            ℹ️ This is a lightweight interface. It will open IRCTC's official booking page with your search filled in.
+        </div>
+
+        <form id="searchForm">
+            <div class="form-group">
+                <label for="from">From Station</label>
+                <input type="text" id="from" list="stations" placeholder="e.g., NDLS or New Delhi" required>
+                <datalist id="stations">
+                    <!-- <option value="NDLS">New Delhi (NDLS)</option>
+                    <option value="BCT">Mumbai Central (BCT)</option>
+                    <option value="MAS">Chennai Central (MAS)</option>
+                    <option value="HWH">Howrah Junction (HWH)</option>
+                    <option value="BLR">Bangalore City (BLR)</option>
+                    <option value="SBC">Bangalore Cant (SBC)</option>
+                    <option value="BBS">Bhubaneswar (BBS)</option>
+                    <option value="PNBE">Patna Junction (PNBE)</option>
+                    <option value="LKO">Lucknow (LKO)</option>
+                    <option value="CNB">Kanpur Central (CNB)</option>
+                    <option value="AGC">Agra Cantt (AGC)</option>
+                    <option value="JAT">Jammu Tawi (JAT)</option>
+                    <option value="ADI">Ahmedabad (ADI)</option>
+                    <option value="PUNE">Pune Junction (PUNE)</option> -->
+                    <option value="ST">Surat (ST)</option>
+                    <option value="BKN">BIkaner (BKN)</option>
+                </datalist>
+            </div>
+
+            <div class="form-group">
+                <label for="to">To Station</label>
+                <input type="text" id="to" list="stations" placeholder="e.g., BCT or Mumbai" required>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="date">Journey Date</label>
+                    <input type="date" id="date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="class">Class</label>
+                    <select id="class" required>
+                        <option value="All">All Classes</option>
+                        <option value="SL">Sleeper (SL)</option>
+                        <option value="3A">AC 3 Tier (3A)</option>
+                        <option value="2A">AC 2 Tier (2A)</option>
+                        <option value="1A">AC First Class (1A)</option>
+                        <option value="3E">AC 3 Economy (3E)</option>
+                        <option value="CC">AC Chair Car (CC)</option>
+                        <option value="2S">Second Sitting (2S)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="quota">Quota</label>
+                <select id="quota">
+                    <option value="GN">General</option>
+                    <option value="TQ">Tatkal</option>
+                    <option value="PT">Premium Tatkal</option>
+                    <option value="LD">Ladies</option>
+                    <option value="SS">Senior Citizen</option>
+                    <option value="HP">Divyaang</option>
+                </select>
+            </div>
+
+            <button type="submit">🔍 Search Trains on IRCTC</button>
+        </form>
+
+        <div class="quick-links">
+            <strong>Quick Links:</strong>
+            <a href="https://www.irctc.co.in/nget/train-search" target="_blank">
+                🚂 IRCTC Main Search
+            </a>
+            <a href="https://www.irctc.co.in/nget/profile/user/check-pnr" target="_blank">
+                🎫 Check PNR Status
+            </a>
+            <a href="https://www.irctc.co.in/nget/booking/history" target="_blank">
+                📋 Booking History
+            </a>
+            <a href="https://www.confirmtkt.com/train-app/railway-station-codes" target="_blank">
+                📍 Find Station Codes
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Set min date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date').setAttribute('min', today);
+        document.getElementById('date').value = today;
+
+        // Extract station code from input
+        function getStationCode(input) {
+            // If input is already a code (4 chars or less)
+            if (input.length <= 4) {
+                return input.toUpperCase();
+            }
+            
+            // Try to extract code from "Station Name (CODE)" format
+            const match = input.match(/KATEX_INLINE_OPEN([A-Z]{2,4})KATEX_INLINE_CLOSE/);
+            if (match) {
+                return match[1];
+            }
+            
+            // Otherwise return as-is (IRCTC will handle)
+            return input;
+        }
+
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const from = getStationCode(document.getElementById('from').value);
+            const to = getStationCode(document.getElementById('to').value);
+            const date = document.getElementById('date').value;
+            const travelClass = document.getElementById('class').value;
+            const quota = document.getElementById('quota').value;
+
+            // Format date for IRCTC (DD-MM-YYYY)
+            const [year, month, day] = date.split('-');
+            const formattedDate = `${day}-${month}-${year}`;
+
+            // Build IRCTC URL with pre-filled parameters
+            const url = `https://www.irctc.co.in/nget/train-search`;
+            
+            // Open IRCTC in new tab
+            const newWindow = window.open(url, '_blank');
+            
+            // Store search params in sessionStorage for auto-fill
+            sessionStorage.setItem('irctc_lite_search', JSON.stringify({
+                from,
+                to,
+                date: formattedDate,
+                class: travelClass,
+                quota
+            }));
+
+            // Show message
+            setTimeout(() => {
+                alert(`Opening IRCTC...\n\nFrom: ${from}\nTo: ${to}\nDate: ${formattedDate}\nClass: ${travelClass}\n\n⚠️ You'll need to manually fill the form on IRCTC.\nThis lite interface only helps you prepare your search.`);
+            }, 100);
+        });
+
+        // Popular routes quick fill
+        const popularRoutes = {
+            'Delhi-Mumbai': { from: 'NDLS', to: 'BCT' },
+            'Mumbai-Delhi': { from: 'BCT', to: 'NDLS' },
+            'Delhi-Kolkata': { from: 'NDLS', to: 'HWH' },
+            'Chennai-Bangalore': { from: 'MAS', to: 'SBC' }
+        };
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter to submit
+            if (e.ctrlKey && e.key === 'Enter') {
+                document.getElementById('searchForm').requestSubmit();
+            }
+        });
+    </script>
+</body>
+</html>        // Add small tutorials under every field
+        document.getElementById('from').title = "Enter the starting station code (e.g., NDLS) or name (e.g., New Delhi).";
+        document.getElementById('to').title = "Enter the destination station code (e.g., BCT) or name (e.g., Mumbai Central).";
+        document.getElementById('date').title = "Select your desired journey date.";
+        document.getElementById('class').title = "Choose your preferred class of travel (e.g., Sleeper, AC 3 Tier).";
+        document.getElementById('quota').title = "Select a quota if applicable (e.g., General, Tatkal).";
