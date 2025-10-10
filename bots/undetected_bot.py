@@ -10,15 +10,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
-
 from webdriver_manager.chrome import ChromeDriverManager
-from constants import DATE, QUOTA, STATIONS, JOURNEY_CLASS
+from constants.driver_configuration import WAIT_TIMES
+from constants.website_constants import DATE, QUOTA, STATIONS, JOURNEY_CLASS, URLS
 
 
-WAIT_SECONDS = 15  # seconds
+# WAIT_SECONDS = 15  # seconds
 
 
 def get_trip_details_from_json(file_path="trip_details.json"):
@@ -48,7 +47,7 @@ def get_trip_details_from_json(file_path="trip_details.json"):
             raise ValueError(
                 "Missing one or more required fields (FROM_STATION, TO_STATION, JOURNEY_DATE) in JSON."
             )
-        datetime.datetime.strptime(journey_date, "%d-%m-%Y")  # Validate date format
+        dt.datetime.strptime(journey_date, "%d-%m-%Y")  # Validate date format
         return from_station.strip(), to_station.strip(), journey_date.strip()
     except FileNotFoundError:
         raise FileNotFoundError(
@@ -70,7 +69,7 @@ class InteractiveIRCTCHelper:
         detectable=False,
         eager=False,
         url=None,
-        wait_seconds=WAIT_SECONDS,
+        wait_seconds=WAIT_TIMES.DRIVER_DEFAULT,
     ):
         """Initializes the browser using undetected_chromedriver."""
 
@@ -79,7 +78,7 @@ class InteractiveIRCTCHelper:
         )
         self.wait_seconds = wait_seconds
         self.wait = WebDriverWait(self.driver, wait_seconds)
-        self.direct_url = url if url else "https://www.irctc.co.in/nget/train-search"
+        self.direct_url = url if url else URLS.IRCTC_HOME
 
     def _initialise_driver(self, headless: bool, detectable: bool, eager: bool):
         print(
@@ -120,7 +119,23 @@ class InteractiveIRCTCHelper:
     def go_to_url(self, url=None):
         print(f"\n🌍 Navigating to: {url if url else self.direct_url}")
         self.driver.get(url if url else self.direct_url)
-        self.driver.save_screenshot("screenshots/url_screenshot.png")
+        self.driver.save_screenshot("./screenshots/url_screenshot.png")
+
+    def handle_popups(self):
+        # --- Handle the initial welcome alert/popup ---
+        try:
+            print("🔍 Checking for initial alert popup...")
+            ok_button = self.wait.until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "//button[contains(text(), 'OK')]")
+                )
+            )
+            ok_button.click()
+            print("✅ Alert popup handled.")
+        except TimeoutException:
+            print("ℹ️ No initial alert popup appeared. Continuing...")
+        finally:
+            self.driver.save_screenshot("./screenshots/url_screenshot_after_popup.png")
 
     def _select_from_to_autocomplete(self, formcontrolname, search_text, option_text):
         """
@@ -307,19 +322,6 @@ class InteractiveIRCTCHelper:
         with the details provided by the user.
         """
 
-        # --- Step 1: Handle the initial welcome alert/popup ---
-        try:
-            print("🔍 Checking for initial alert popup...")
-            ok_button = self.wait.until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "//button[contains(text(), 'OK')]")
-                )
-            )
-            ok_button.click()
-            print("✅ Alert popup handled.")
-        except TimeoutException:
-            print("ℹ️ No initial alert popup appeared. Continuing...")
-
         # --- Step 2: Fill the form with user input ---
         try:
 
@@ -352,6 +354,21 @@ class InteractiveIRCTCHelper:
             print("Full Traceback:")
             traceback.print_exc()
 
+
+    def submit_search_form(self):
+        # Absolute XPath of the Search button
+        search_button_xpath = "/html/body/app-root/app-home/div[3]/div/app-main-page/div/div/div[1]/div[1]/div[1]/app-jp-input/div/form/div[5]/div[1]/button"
+
+        # Wait up to 15 seconds for the button to be clickable
+        search_btn = self.wait.until(
+            EC.element_to_be_clickable((By.XPATH, search_button_xpath))
+        )
+
+        # Click the button
+        search_btn.click()
+        time.sleep(1.5)
+        print("✅ Search button clicked successfully.")
+
     def graceful_shutdown(self):
         """Attempts to quit the driver, but handles errors if it's already closed."""
 
@@ -371,6 +388,18 @@ class InteractiveIRCTCHelper:
 
         print("Program Ended")
 
+    def execute(self):
+        bot.go_to_url()
+        bot.handle_popups()
+        bot.setup_search_form(
+            STATIONS.BKN,
+            STATIONS.ST,
+            DATE.JOURNEY_DATE,
+            JOURNEY_CLASS.SLEEPER,
+            QUOTA.TATKAL,
+        )
+        bot.submit_search_form()
+
 
 # --- Main Execution Block ---
 if __name__ == "__main__":
@@ -387,15 +416,11 @@ if __name__ == "__main__":
 
     # 2. Launch the bot and set up the form
     bot = InteractiveIRCTCHelper(headless=False, detectable=False, eager=True, url=url)
-    print(bot.driver.capabilities)
-    bot.go_to_url()
-    bot.setup_search_form(
-        STATIONS.BKN,
-        STATIONS.ST,
-        DATE.JOURNEY_DATE,
-        JOURNEY_CLASS.SLEEPER,
-        QUOTA.TATKAL,
-    )
+    # bot = InteractiveIRCTCHelper(headless=False, detectable=False, eager=True, url=url); bot.go_to_url()
+
+    bot.execute()
+
+
 
     # 3. The script will leave the browser open for the user.
     bot.graceful_shutdown()

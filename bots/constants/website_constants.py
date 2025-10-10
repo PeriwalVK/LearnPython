@@ -1,3 +1,6 @@
+class URLS:
+    IRCTC_HOME = "https://www.irctc.co.in/nget/train-search"
+
 class STATIONS:
     BKN = "BIKANER JN - BKN (BIKANER)"
     ST = "SURAT - ST"
@@ -7,12 +10,9 @@ class STATIONS_SEARCH_TEXT:
     ST = "SURAT"
 
 
-class URLS:
-    IRCTC_TRAIN_SEARCH = "https://www.irctc.co.in/nget/train-search"
-
-
 class DATE:
     JOURNEY_DATE = "11/10/2025"
+    # JOURNEY_DATE = "01/12/2025"
 
 
 class JOURNEY_CLASS:
@@ -40,4 +40,4 @@ class QUOTA:
     DUTY_PASS = "DUTY PASS"
     TATKAL = "TATKAL"
     PREMIUM_TATKAL = "PREMIUM TATKAL"
-    pass
+
