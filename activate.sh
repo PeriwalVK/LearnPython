@@ -45,7 +45,8 @@ echo "🐍 Env Python path: $(which python)"
 echo "🐍 Env Python version: $(python --version)"
 echo -e "\n"
 
-pip install --upgrade pip
+# pip install --upgrade pip
+"$TARGET_PYTHON" -m pip install --upgrade pip
 pip install -r "$SCRIPT_DIR/requirements.txt"
 
 echo "✅ Dependencies installed from requirements.txt"

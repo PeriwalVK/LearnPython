@@ -1,6 +1,11 @@
+import os
+import platform
+import shutil
+import subprocess
 import time
 import datetime as dt
 import traceback
+import chrome_version
 import undetected_chromedriver as uc
 import json
 from selenium.webdriver.common.by import By
@@ -18,7 +23,6 @@ from constants.website_constants import DATE, QUOTA, STATIONS, JOURNEY_CLASS, UR
 
 
 # WAIT_SECONDS = 15  # seconds
-
 
 def get_trip_details_from_json(file_path="trip_details.json"):
     """
@@ -409,18 +413,16 @@ if __name__ == "__main__":
     # url = "https://www.hapag-lloyd.com/en/home.html"
     # url = "https://bot.sannysoft.com/"
     # url = "https://www.browserscan.net/bot-detection"
+    # url = "https://www.browserscan.net"
+    url = "https://www.browserscan.net/browser-checker"
+    url = "https://pixelscan.net/bot-check"
     # url = "https://www.google.com"
 
     # # 1. Get trip details from a JSON file
     # from_stn, to_stn, date_str = get_trip_details_from_json()
 
     # 2. Launch the bot and set up the form
-    bot = InteractiveIRCTCHelper(headless=False, detectable=False, eager=True, url=url)
     # bot = InteractiveIRCTCHelper(headless=False, detectable=False, eager=True, url=url); bot.go_to_url()
-
-    bot.execute()
-
-
-
+    bot = InteractiveIRCTCHelper(headless=False, detectable=False, eager=True, url=url); bot.execute()
     # 3. The script will leave the browser open for the user.
     bot.graceful_shutdown()
