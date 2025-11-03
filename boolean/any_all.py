@@ -28,6 +28,7 @@ def f4(out: bool) -> bool:
 
 separator("All Should Run")
 print(any([f1(True), f2(True), f3(True), f4(True)]))
+print(any(f for f in [f1(True), f2(True), f3(True), f4(True)]))
 
 
 separator("But these will Short circuit at f1")
