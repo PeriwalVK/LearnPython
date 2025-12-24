@@ -74,6 +74,7 @@ tqdm==4.67.1
 trio==0.31.0
 trio-websocket==0.12.2
 typing_extensions==4.15.0
+tzdata==2025.3
 ua-parser==1.0.1
 ua-parser-builtins==0.18.0.post1
 undetected-chromedriver==3.5.5

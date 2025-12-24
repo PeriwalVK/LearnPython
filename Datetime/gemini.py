@@ -27,11 +27,13 @@ import datetime as dt
 # print("-" * 30)
 
 
-def separator(title):
-    """Helper function to create section separators"""
-    print(f"\n\n{'='*60}")
-    print(f" {title.upper()}")
-    print("=" * 60)
+def separator(msg: str, l: int = 100):
+    n = len(msg)
+    hash_len = (l - n - 2) // 2
+    print(" ")
+    print("=" * l)
+    print(f"{'#'*hash_len} {msg} {'#'*hash_len}")
+    print("=" * l)
 
 
 def _2_():
@@ -416,13 +418,13 @@ def _conclusion():
 
 
 if __name__ == "__main__":
-    # _2_()
-    # _3_()
-    # _4_()
-    # _5_()
-    # _6_()
-    # _7_()
-    # _8_()
-    # _9_()
+    _2_()
+    _3_()
+    _4_()
+    _5_()
+    _6_()
+    _7_()
+    _8_()
+    _9_()
     _10_()
     # _conclusion()
