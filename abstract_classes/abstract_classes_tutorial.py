@@ -320,6 +320,46 @@ def constructor_as_abstract_method():
 
 
 # ====================================================================================================
+# ########################## 8. DEFINING ABSTRACT CLASS METHOD #######################################
+# ====================================================================================================
+
+
+def defining_abstract_class_method():
+    separator("8. DEFINING ABSTRACT CLASS METHOD")
+
+    """
+    To define an abstract class method today, 
+    you simply stack the @classmethod and @abstractmethod decorators. 
+    The order matters: 
+        @abstractmethod should be the innermost decorator (closest to the def), and 
+        @classmethod should be on top.
+    """
+
+    class Base(ABC):
+        @classmethod
+        @abstractmethod
+        def from_config(cls, config):
+            """This is an abstract class method."""
+            pass
+
+    class Concrete(Base):
+        @classmethod
+        def from_config(cls, config):
+            return cls()
+
+    # This works
+    c = Concrete.from_config({})
+    print("Concrete.from_config() worked\n")
+
+    # This would raise a TypeError because Base cannot be instantiated
+    try:
+        print("Instantiating Base directly...")
+        b = Base()
+    except TypeError as e:
+        print(f"Raised a TypeError because Base cannot be instantiated: {e}")
+
+
+# ====================================================================================================
 # ########################################### SUMMARY ################################################
 # ====================================================================================================
 
@@ -348,4 +388,5 @@ if __name__ == "__main__":
     default_implementations_in_abstract_methods()
     abstract_class_as_an_interface_vs_normal_inheritance()
     constructor_as_abstract_method()
+    defining_abstract_class_method()
     summary()
