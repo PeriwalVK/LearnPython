@@ -43,4 +43,4 @@ def mask(msg):
     return "".join(map(lambda x: masked.get(x.lower(), x), msg))
 
 
-print(mask("The quick brown fox jumps over the lazy dog: 0,1,2,3,4,5,6,7,8,9"))
+print(mask("The quick brown fox jumps over the lazy dog 0123456789"))
