@@ -19,8 +19,6 @@ This script demonstrates:
 7. Common pitfalls
 """
 
-from os import sep
-
 
 def separator(msg: str, l: int = 100):
     n = len(msg)
