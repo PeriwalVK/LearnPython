@@ -281,6 +281,8 @@ def _4_singleton_via_metaclass():
         _instances = {}
 
         def __call__(cls, *args, **kwargs):
+            # The 'cls' argument will be the specific class being instantiated. 
+            # (Ex: SingletonWithMeta)
             if cls not in cls._instances:
                 cls._instances[cls] = super().__call__(*args, **kwargs)
             return cls._instances[cls]
