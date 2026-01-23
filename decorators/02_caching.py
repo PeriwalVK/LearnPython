@@ -34,6 +34,27 @@ The wrapper function "closes over" the cache dictionary. This means it can read 
 
 
 
+@singleton
+class A:
+    pass
+
+# A is now actually the function 'get_instance'
+print(A) 
+# <function singleton.<locals>.get_instance at ...>
+
+# We can peek inside its closure
+# It will show two cells: one for 'cls' and one for 'instances'
+print(A.__closure__) 
+# (<cell at 0x...: type object at ...>, <cell at 0x...: dict object at ...>)
+
+# We can even look at the contents of the dictionary inside the closure
+print(A.__closure__[1].cell_contents) 
+# {}  (Empty initially)
+
+A() # Create instance
+print(A.__closure__[1].cell_contents) 
+# {<class '__main__.A'>: <__main__.A object at ...>} (Now it remembers!)
+
 """
 
 def cache(func):
