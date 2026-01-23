@@ -1,11 +1,11 @@
-
 def separator(msg: str, l: int = 100):
     n = len(msg)
     hash_len = (l - n - 2) // 2
     print(" ")
     print("=" * l)
-    print(f"{'#'*hash_len} {msg} {'#'*hash_len}")
+    print(f"{'#' * hash_len} {msg} {'#' * hash_len}")
     print("=" * l)
+
 
 name = "Alice"
 age = 10
@@ -24,8 +24,12 @@ Debugging with =:
     to automatically display the expression and its result, 
     (great for debugging)
 """
-print(f"name: {name}, age: {age}, annual income: {annual_income:.2f} [comma separated: {annual_income:,}], Net worth: {annual_income * age}")
-print(f"{name=}, {age=}, {annual_income=:.2f}, [comma separated {annual_income=:,}], {annual_income*age=}")
+print(
+    f"name: {name}, age: {age}, annual income: {annual_income:.2f} [comma separated: {annual_income:,}], Net worth: {annual_income * age}"
+)
+print(
+    f"{name=}, {age=}, {annual_income=:.2f}, [comma separated {annual_income=:,}], {annual_income*age=}"
+)
 
 
 separator("2. using str.format()")
@@ -56,5 +60,3 @@ It uses format specifiers like
     %.2f for floats with 2 decimal places 
 """
 print("name: %s, age: %d, annual income: %.2f" % (name, age, annual_income))
-
-
