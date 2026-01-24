@@ -1,8 +1,11 @@
+from __future__ import annotations
+from contextlib import contextmanager
 import threading
 import time
 import random
 import queue
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List, override
 
 
 def separator(msg: str, l: int = 100):
@@ -12,12 +15,13 @@ def separator(msg: str, l: int = 100):
     print("=" * l)
     print(f"{'#' * hash_len} {msg} {'#' * hash_len}")
     print("=" * l)
+    print(" ")
 
 
 def print_subsection(title, l: int = 100):
     n = len(title)
     hash_len = (l - n - 2) // 2
-    print(f"\n {'-' * hash_len} {title} {'-' * hash_len}\n")
+    print(f"\n{'-' * hash_len} {title} {'-' * hash_len}\n")
 
 
 def announce(msg: str):
@@ -29,234 +33,6 @@ def announce(msg: str):
         return wrapper2
 
     return _deco
-
-
-# print("--- PYTHON THREADING MASTERCLASS ---")
-# print("We will go through 5 levels of complexity.\n")
-
-
-# ==========================================
-# LESSON 1: The Basics (Start & Join)
-# ==========================================
-# Goal: Run two functions at the same time.
-# key concepts: .start(), .join()
-
-
-@announce("LESSON 1: The Basics (Start & Join)")
-def run_lesson_1():
-    def heavy_calculation(name):
-        print(f"[{name}] Starting calculation...")
-        time.sleep(2)  # Simulates doing work
-        print(f"[{name}] Calculation complete!")
-
-    start_time = time.time()
-
-    # 1. Create the threads
-    t1 = threading.Thread(target=heavy_calculation, args=("Thread-1",))
-    t2 = threading.Thread(target=heavy_calculation, args=("Thread-2",))
-
-    # 2. Start them (This forks execution)
-    t1.start()
-    t2.start()
-
-    print("[Main] Threads are running, I am waiting...")
-
-    # 3. Join them (Wait for them to finish before continuing)
-    # If we didn't do this, the script would finish before the threads were done.
-    t1.join()
-    t2.join()
-
-    end_time = time.time()
-    print(f"[Main] Done. Total time: {end_time - start_time:.2f}s")
-    print(
-        "[Main] Note: If this was sequential, it would take 4 seconds. "
-        "But Because it's threaded, it takes ~2 seconds."
-    )
-
-
-# ==========================================
-# LESSON 2: The Race Condition (The Danger Zone)
-# ==========================================
-# Goal: Show what happens when threads fight over shared data.
-# Key concepts: Shared Memory, Data Corruption
-
-
-@announce("LESSON 2: Race Conditions (Unsafe)")
-def run_lesson_2():
-    bank_balance = 0
-
-    def make_transaction_unsafe():
-        nonlocal bank_balance
-        # We copy the value to a local variable
-        current_balance = bank_balance
-        # We sleep to force a "Context Switch" (simulation of the OS pausing the thread)
-        time.sleep(0.0001)
-        # We update the value
-        bank_balance = current_balance + 1
-
-    threads = []
-    # Create 100 threads that all try to add $1 at the exact same time
-    for _ in range(100):
-        t = threading.Thread(target=make_transaction_unsafe)
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
-
-    print("Expected Balance: $100")
-    print(f"Actual Balance:   ${bank_balance}")
-    print("Why? Because threads overwrote each other's work!")
-
-
-# ==========================================
-# LESSON 3: Locks (The Solution)
-# ==========================================
-# Goal: Fix the race condition using a Lock (Mutex).
-# Key concepts: threading.Lock(), acquire(), release(), context managers
-
-
-@announce("LESSON 3: Locking (Safe)")
-def run_lesson_3():
-    safe_balance = 0
-    account_lock = threading.Lock()  # Create the lock
-
-    def make_transaction_safe():
-        nonlocal safe_balance
-        nonlocal account_lock
-
-        with account_lock:
-            # Only ONE thread can be inside that 'with' block at a time.
-            current = safe_balance
-            time.sleep(0.0001)
-            safe_balance = current + 1
-
-    threads = []
-    for _ in range(100):
-        t = threading.Thread(target=make_transaction_safe)
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
-
-    print(f"Actual Balance:   ${safe_balance} (Perfect!)")
-
-
-# ==========================================
-# LESSON 4: Daemon Threads
-# ==========================================
-# Goal: Run a background task that dies when the main program dies.
-# Key concepts: daemon=True
-
-
-# @announce("LESSON 4: Daemon Threads")
-# def run_lesson_4():
-#     def background_autosave():
-#         cnt = 0
-#         while True:
-#             cnt+=1
-#             print(f"[Autosave][{cnt}] Saving work...", end="\r")
-#             time.sleep(0.5)
-#             # print("here")
-
-
-#     # daemon=True means: "If the main program finishes, kill this thread immediately"
-#     # (Non-Daemon Thread (Default):
-#     #   This is a VIP. The Python program cannot exit as long as this thread is running.
-#     #   It will wait forever for it to finish.)
-#     t = threading.Thread(target=background_autosave, daemon=True)
-#     t.start()
-
-#     print("[Main] Working on main task (3 seconds)...")
-#     time.sleep(3)
-#     print("\n[Main] Work finished. Exiting.")
-#     # Notice we do NOT join the daemon thread. It dies automatically here.
-
-
-# ==========================================
-# LESSON 5: Producer-Consumer (Queues)
-# ==========================================
-# Goal: Safe communication between threads.
-# Key concepts: queue.Queue, put(), get(), task_done()
-
-
-@announce("LESSON 5: Thread-Safe Queues")
-def run_lesson_5():
-    def chef(order_queue: queue.Queue):
-        while True:
-            order = order_queue.get()  # Blocks until an item is available
-            if order is None:
-                print(f"[{threading.current_thread().name}]: Exiting...")
-                break  # Poison pill to stop the thread
-
-            print(f"[{threading.current_thread().name}] Cooking {order}...")
-            time.sleep(random.uniform(0.1, 0.5))
-            print(f"[{threading.current_thread().name}] {order} is ready!")
-
-            order_queue.task_done()  # Tell queue this specific item is finished
-
-    kitchen_queue = queue.Queue()
-
-    # Start 2 worker threads (Chefs)
-    num_threads = 2
-    worker_threads = [
-        threading.Thread(
-            target=chef, args=(kitchen_queue,), daemon=True, name=f"Chef-{i + 1}"
-        )
-        for i in range(num_threads)
-    ]
-
-    for t in worker_threads:
-        t.start()
-
-    orders = ["Steak", "Pasta", "Salad", "Soup", "Burger"]
-
-    for order in orders:
-        print(f"[Waiter] Order placed: {order}")
-        kitchen_queue.put(order)
-
-    # Block the main thread until the queue is empty
-
-    kitchen_queue.join()
-    # for _ in worker_threads:
-    #     kitchen_queue.put(None)
-
-    print("[Manager] All orders served!")
-
-
-# ==========================================
-# BONUS: The Professional Way (ThreadPoolExecutor)
-# ==========================================
-# Goal: Do Lesson 1 but with less code and better management.
-
-
-@announce("BONUS: ThreadPoolExecutor (Modern Standard)")
-def run_bonus():
-    def download_url(url):
-        time.sleep(random.uniform(0.5, 1))
-        return f"[{threading.current_thread().name}] Data from {url}"
-
-    urls = ["google.com", "yahoo.com", "bing.com", "duckduckgo.com", "github.com"]
-
-    # Automatically manages threads, queue, and starting/stopping
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        results = executor.map(download_url, urls)
-
-    for res in results:
-        print(f"[Main] Received: {res}")
-
-
-# ==========================================
-# MAIN RUNNER
-# ==========================================
-def main1():
-    # Uncomment the lesson you want to run, or run them all
-    run_lesson_1()
-    run_lesson_2()
-    run_lesson_3()
-    run_lesson_5()
-    run_bonus()
 
 
 """
@@ -293,11 +69,11 @@ Run this script to see all examples in action!
 
 
 # =============================================================================
-# SECTION 1: BASIC THREAD CREATION
+# SECTION 1: BASIC THREAD CREATION (Start & Join)
 # =============================================================================
 
 
-@announce("SECTION 1: BASIC THREAD CREATION")
+@announce("SECTION 1: BASIC THREAD CREATION (Start & Join)")
 def section_1_basic_thread_creation():
     """
     The simplest way to create a thread is using threading.Thread()
@@ -305,36 +81,36 @@ def section_1_basic_thread_creation():
     """
 
     # Simple function to run in a thread
-    def say_hello(name):
-        """A simple function that will run in a separate thread."""
-        print(f"[{name}]: Hello from {name}!")
-        print(f"[{name}]: Thread ID: {threading.current_thread().ident}")
-        time.sleep(1)  # Simulate some work
-        print(f"[{name}]: Thread finished!")
+    def heavy_calculation(name):
+        print(f"[{name}] Starting calculation...")
+        time.sleep(2)  # Simulates doing work
+        print(f"[{name}] Calculation complete!")
 
-    print("Creating and starting threads...")
-    print(f"Main thread: {threading.current_thread().name}\n")
+    start_time = time.time()
 
-    # Method 1: Create and start separately
-    thread1 = threading.Thread(target=say_hello, args=("Thread-1",))
-    thread1.start()
+    # 1. Create the threads
+    t1 = threading.Thread(target=heavy_calculation, args=("Thread-1",))
+    t2 = threading.Thread(target=heavy_calculation, args=("Thread-2",))
 
-    # Method 2: Multiple threads
-    thread2 = threading.Thread(target=say_hello, args=("Thread-2",))
-    thread3 = threading.Thread(target=say_hello, args=("Thread-3",))
+    # 2. Start them (This forks execution)
+    t1.start()
+    t2.start()
 
-    thread2.start()
-    thread3.start()
+    print("[Main] Threads are running, I am waiting...")
 
-    # Wait for all threads to complete
-    thread1.join()
-    thread2.join()
-    thread3.join()
+    # 3. Join them (Wait for them to finish before continuing)
+    # If we didn't do this, the script would finish before the threads were done.
+    t1.join()
+    t2.join()
 
-    print("\nAll threads completed!")
-
-    # Show active thread count
+    end_time = time.time()
+    print(f"[Main] Done. Total time: {end_time - start_time:.2f}s")
     print(f"Active threads: {threading.active_count()}")
+
+    print(
+        "[Main] Note: If this was sequential, it would take 4 seconds. "
+        "But Because it's threaded, it takes ~2 seconds."
+    )
 
 
 # =============================================================================
@@ -359,6 +135,7 @@ def section_2_thread_classes():
             self.iterations = iterations
             self.result = 0  # Store result
 
+        @override
         def run(self):
             """
             Override run() method - this is what executes in the thread.
@@ -374,8 +151,8 @@ def section_2_thread_classes():
 
     # Create thread instances
     workers = [
-        WorkerThread(worker_id=1, iterations=5),
-        WorkerThread(worker_id=2, iterations=3),
+        WorkerThread(worker_id=1, iterations=6),
+        WorkerThread(worker_id=2, iterations=5),
         WorkerThread(worker_id=3, iterations=4),
     ]
 
@@ -407,11 +184,11 @@ def section_3_thread_naming():
     def show_thread_info():
         """Display information about the current thread."""
         current = threading.current_thread()
-        print(f"  Name: {current.name}")
-        print(f"  ID: {current.ident}")
-        print(f"  Native ID: {current.native_id}")  # Python 3.8+
-        print(f"  Is Alive: {current.is_alive()}")
-        print(f"  Is Daemon: {current.daemon}")
+        print(f"   Name: {current.name}")
+        print(f"   ID: {current.ident}")
+        print(f"   Native ID: {current.native_id}")  # Python 3.8+
+        print(f"   Is Alive: {current.is_alive()}")
+        print(f"   Is Daemon: {current.daemon}")
         print()
 
     print("Main thread info:")
@@ -419,7 +196,7 @@ def section_3_thread_naming():
 
     # Create named threads
     def worker():
-        print(f"Worker thread info:")
+        print("Worker thread info:")
         show_thread_info()
 
     # Method 1: Name in constructor
@@ -459,11 +236,11 @@ def section_4_daemon_threads():
 
     def background_task(name, duration):
         """Simulates a long-running background task."""
-        print(f"  {name}: Starting (will take {duration}s)")
+        print(f"  [{name}]: Starting (will take {duration}s)")
         for i in range(duration):
-            print(f"  {name}: Working... ({i + 1}/{duration})")
-            time.sleep(0.3)
-        print(f"  {name}: Finished!")
+            print(f"  [{name}]: Working... ({i + 1}/{duration})")
+            time.sleep(1)
+        print(f"  [{name}]: Finished!")
 
     # Non-daemon thread (default) - Program waits for it
     print_subsection("Non-Daemon Thread (default)")
@@ -472,6 +249,9 @@ def section_4_daemon_threads():
         args=("Regular", 3),
         daemon=False,  # This is the default
     )
+    # Alternative way to set daemon
+    # daemon_thread.daemon = True  # Must be set before start()
+
     regular_thread.start()
     regular_thread.join()  # Wait for completion
 
@@ -483,16 +263,21 @@ def section_4_daemon_threads():
         daemon=True,  # Set as daemon
     )
 
-    # Alternative way to set daemon
-    # daemon_thread.daemon = True  # Must be set before start()
-
     daemon_thread.start()
 
-    print("  Main: Waiting 1 second then continuing...")
+    print("  [FUNC]: Waiting 1 second then continuing...")
     time.sleep(1)
-    print("  Main: If this were the end of program, daemon would be killed!")
+    print("  [FUNC]: If this were the end of main program, daemon would be killed!")
+    print(
+        "  [FUNC]: But here it will continue as I have written it in a function, "
+        "so the function will end but main thread will still be running other functions..."
+    )
+    print(
+        "  [FUNC]: If it were the last function the main is calling and after this, main is exiting, then daemon would be killed. "
+        "You can try editing program for this to observe the result"
+    )
 
-    # We'll wait for demo purposes
+    # We'll wait for demo purposes, so that print statements don't mix up
     daemon_thread.join()
 
     print("\n  Key Takeaway:")
@@ -514,47 +299,50 @@ def section_5_thread_joining():
 
     def slow_task(seconds):
         """A task that takes some time."""
-        print(f"  Task: Starting ({seconds}s task)")
+        print(
+            f"  [{threading.current_thread().name}]: Task: Starting (this will take {seconds} seconds...)"
+        )
         time.sleep(seconds)
-        print(f"  Task: Completed!")
-        return "Success"
+        print(f"  [{threading.current_thread().name}]: Task: Completed!")
+        return f"[{threading.current_thread().name}]: Success"
 
     # Basic join - wait indefinitely
     print_subsection("Basic join()")
-    t1 = threading.Thread(target=slow_task, args=(1,))
+    t1_name = "Thread-1"
+    t1 = threading.Thread(target=slow_task, args=(1,), name=t1_name)
     t1.start()
-    print("  Main: Waiting for thread...")
+    print(f"  [Main]: Waiting for {t1_name} to finish...")
     t1.join()  # Blocks until t1 finishes
-    print("  Main: Thread finished!")
+    print(f"  [Main]: {t1_name} finished!")
 
     # Join with timeout
     print_subsection("join() with timeout")
-    t2 = threading.Thread(target=slow_task, args=(3,))
-    t2.start()
+    thread_list = []
+    for i in range(1, 3):
+        thread_list.append(
+            threading.Thread(
+                target=slow_task, args=(i * i - 0.2,), name=f"Thread-{i + 1}"
+            )
+        )  # threads-2,3
 
-    print("  Main: Waiting max 1 second...")
-    t2.join(timeout=1.0)  # Wait at most 1 second
-
-    if t2.is_alive():
-        print("  Main: Thread still running after timeout!")
-        print("  Main: Waiting for completion...")
-        t2.join()  # Wait for actual completion
-    else:
-        print("  Main: Thread finished within timeout!")
-
-    # Joining multiple threads
-    print_subsection("Joining Multiple Threads")
-    threads = []
-    for i in range(3):
-        t = threading.Thread(target=slow_task, args=(0.5,))
-        threads.append(t)
+    for t in thread_list:
         t.start()
 
-    # Wait for all threads
-    for t in threads:
-        t.join()
+    for t in thread_list:
+        print(f"  [Main]: Waiting for {t.name} to finish within max 1 seconds...")
+        t.join(
+            timeout=1
+        )  # Wait at most 1 second, then just unblocks (but doesn't kill)
 
-    print("  All threads completed!")
+        if t.is_alive():
+            print(f"  [Main]: {t.name} unblocked after 1 second (not killed)!")
+            print(f"  [Main]: {t.name} still running even after 1 second!")
+            print(f"  [Main]: Now let {t.name} complete...")
+        else:
+            print(f"  [Main]: {t.name} finished within timeout!")
+
+    for t in thread_list:
+        t.join()  # Wait for actual completion
 
 
 # =============================================================================
@@ -649,52 +437,82 @@ def section_7_lock():
                 time.sleep(0.0001)  # Same delay as race condition example
                 counter = current + 1
 
+    # -------------------------------------- Safe Counter with Lock --------------------------------------
     print_subsection("Safe Counter with Lock")
 
-    threads = []
+    threads_list = []
     increments_per_thread = 100
     num_threads = 5
 
     for i in range(num_threads):
         t = threading.Thread(target=increment_with_lock, args=(increments_per_thread,))
-        threads.append(t)
+        threads_list.append(t)
 
-    for t in threads:
+    for t in threads_list:
         t.start()
 
-    for t in threads:
+    for t in threads_list:
         t.join()
 
     expected = num_threads * increments_per_thread
 
     print(f"  Expected result: {expected}")
     print(f"  Actual result:   {counter}")
-    print(f"  ✓ No lost updates!")
+    print("  ✓ No lost updates!")
 
+    # --------------------------- manually Lock/unlock and Non-Blocking locks ---------------------------
     # Lock methods
-    print_subsection("Lock Methods")
+    print_subsection("manually Lock/unlock and Non-Blocking locks")
 
     demo_lock = threading.Lock()
 
     # Try to acquire without blocking
-    print(f"  Lock acquired: {demo_lock.acquire(blocking=False)}")  # True
+    print(f"  Lock acquired: {demo_lock.acquire(blocking=False)}")
+    # True (bcz lock was available)
+
     print(f"  Lock is held (locked): {demo_lock.locked()}")  # True
-    print(f"  Try acquire again: {demo_lock.acquire(blocking=False)}")  # False
+
+    print(f"  Try acquire again: {demo_lock.acquire(blocking=False)}")
+    # False (bcz lock not available, returned false without waiting)
+
     demo_lock.release()
     print(f"  After release, locked: {demo_lock.locked()}")  # False
 
-    # Acquire with timeout
-    print(f"\n  Acquire with timeout:")
-    demo_lock.acquire()
+    # ----------------------------- Non-Blocking lock using context manager -----------------------------
+    print_subsection("Non-Blocking lock using context manager")
 
-    def try_acquire():
-        result = demo_lock.acquire(timeout=0.5)
-        print(f"    Thread acquired lock: {result}")
+    @contextmanager
+    def non_blocking_lock(lock: threading.Lock):
+        acquired = lock.acquire(blocking=False)
+        print(f"  lock.acquire(blocking=False) returned: {acquired}")
+        try:
+            if acquired:
+                print(f"  After acquiring,lock.locked(): {lock.locked()}")  # True
+                yield  # Lock acquired, proceed
+            else:
+                print("  Lock not acquired, skipping block")
+        finally:
+            if acquired:
+                lock.release()
+                print(f"  After release, lock.locked(): {lock.locked()}")  # False
 
-    t = threading.Thread(target=try_acquire)
-    t.start()
-    t.join()
-    demo_lock.release()
+    # Usage
+    with non_blocking_lock(demo_lock):
+        print("  Inside the block (That means non-blocking lock has been acquired)")
+        # This runs only if the lock was acquired
+
+    # --------------------------------------- Acquire with timeout ---------------------------------------
+    print_subsection("Acquire with timeout")
+    with demo_lock:
+
+        def try_acquire():
+            result = demo_lock.acquire(timeout=0.5)
+            print(f"    Thread acquired lock: {result}")
+            # False (since already acquired, hence crossed the timeout and returned False)
+
+        t = threading.Thread(target=try_acquire)
+        t.start()
+        t.join()
 
 
 # =============================================================================
@@ -708,41 +526,47 @@ def section_8_rlock():
     RLock (Reentrant Lock) can be acquired multiple times by the SAME thread.
     Regular Lock would cause deadlock if same thread tries to acquire twice.
 
+    Internally, an RLock tracks two things:
+        The Owner: The ID of the thread that currently holds the lock.
+        The Recursion Level: A counter indicating how many times the owner has acquired the lock.
+
     Use RLock when:
-    - You have nested function calls that need the lock
-    - Recursive functions that need synchronization
+        - nested function calls that need the lock
+        - Recursive functions that need synchronization
     """
 
     print_subsection("Problem with Regular Lock in Nested Calls")
-    print("  If a function holding a lock calls another function")
-    print("  that also needs the lock → DEADLOCK with regular Lock!\n")
+    print(
+        "  A function holding a regular lock calls another function "
+        "that also needs the same lock → DEADLOCK!\n"
+    )
 
     # RLock example
-    print_subsection("Solution: RLock")
+    print_subsection("Solution: threading.RLock")
 
-    rlock = threading.RLock()
+    # rlock = threading.RLock()
 
     class BankAccount:
         """Bank account with nested locking needs."""
 
         def __init__(self, balance):
             self.balance = balance
-            self.lock = threading.RLock()  # Use RLock for nested calls
+            self.rlock = threading.RLock()  # Use RLock for nested calls
 
         def withdraw(self, amount):
-            with self.lock:
+            with self.rlock:
                 if self.balance >= amount:
                     self.balance -= amount
                     return True
                 return False
 
         def deposit(self, amount):
-            with self.lock:
+            with self.rlock:
                 self.balance += amount
 
-        def transfer_to(self, other_account, amount):
+        def transfer_to(self, other_account: BankAccount, amount):
             """Transfer needs to call withdraw and deposit."""
-            with self.lock:  # First acquisition
+            with self.rlock:  # First acquisition
                 # withdraw() will acquire the SAME lock again
                 # With regular Lock: DEADLOCK
                 # With RLock: Works fine!
@@ -750,7 +574,7 @@ def section_8_rlock():
                     other_account.deposit(amount)
                     print(f"  Transferred ${amount}")
                     return True
-                print(f"  Transfer failed: insufficient funds")
+                print("  Transfer failed: insufficient funds")
                 return False
 
     account1 = BankAccount(100)
@@ -773,11 +597,98 @@ def section_8_rlock():
     rlock.acquire()
     print("    Acquired three times")
 
-    print("  Releasing 3 times...")
+    print("  Has to Release 3 times...")
     rlock.release()
+    print("    1st release")
     rlock.release()
+    print("    2nd release")
     rlock.release()
+    print("    3rd release")
     print("  ✓ All released!")
+
+    print_subsection("Methods to acquire Rlocks")
+
+    print("  Method 1: acquire() and release()")
+    rlock.acquire()
+    # ... critical section ...
+    rlock.release()
+
+    print("  Method 2: Context manager (recommended)")
+    with rlock:
+        # ... critical section ...
+        pass
+
+    print("  Method 3: Non-blocking acquire")
+    if rlock.acquire(blocking=False):
+        try:
+            # ... critical section ...
+            pass
+        finally:
+            rlock.release()
+    else:
+        print("    Could not acquire lock")
+
+    print("  Method 4: Timeout")
+    if rlock.acquire(timeout=5.0):
+        try:
+            # ... critical section ...
+            pass
+        finally:
+            rlock.release()
+
+    print_subsection("Multiple Threads Example: Counter with RLock")
+
+    # Counter with RLock
+    class Counter:
+        def __init__(self):
+            self._rlock = threading.RLock()
+            self._value = 0
+
+        def increment(self):
+            with self._rlock:
+                self._value += 1
+
+        def add(self, n):
+            with self._rlock:  # Lock acquired here
+                for i in range(n):
+                    self.increment()
+                    if i == 50:
+                        print(f"Thread A: halfway done, value = {self._value}")
+                        time.sleep(0.1)  # Simulate slow operation
+                # Lock released here (when exiting 'with' block)
+
+        @property
+        def value(self):
+            with self._rlock:
+                return self._value
+
+    common_counter = Counter()
+
+    def add_100():
+        print(f"[{threading.current_thread().name}]: Starting add(100)")
+        common_counter.add(100)
+        print(f"[{threading.current_thread().name}]: Finished add(100)")
+
+    def read_value():
+        time.sleep(0.05)  # Start slightly after A
+        print(f"[{threading.current_thread().name}]: Trying to read value...")
+        val = common_counter.value  # Will BLOCK until A is done!
+        print(f"[{threading.current_thread().name}]: Got value = {val}")
+
+    t1 = threading.Thread(target=add_100, name="WRITER-THREAD")
+    t2 = threading.Thread(target=read_value, name="READER-THREAD")
+
+    t1.start()
+    t2.start()
+
+    t1.join()
+    t2.join()
+
+    print(
+        "=>  Reader will never get an intermidiate value\n"
+        "=>  because lock will never allow Reader to acquire while it is acquired by Writer,\n"
+        "=>  RLock allows re-entry only for the SAME thread. Other threads must still wait!"
+    )
 
 
 # =============================================================================
@@ -785,7 +696,7 @@ def section_8_rlock():
 # =============================================================================
 
 
-@announce("SECTION 9: THREAD SYNCHRONIZATION - SEMAPHORE")
+@announce("SECTION 9: THREAD SYNCHRONIZATION - SEMAPHORE - [threading.Semaphore(n)]")
 def section_9_semaphore():
     """
     Semaphore allows a LIMITED number of threads to access a resource.
@@ -805,6 +716,8 @@ def section_9_semaphore():
 
     # Allow max 3 concurrent connections
     connection_pool = threading.Semaphore(3)
+    mutex = threading.Lock()
+    # I'll use it just to see how many conenction has been acquired
 
     # BoundedSemaphore prevents releasing more than acquired
     # bounded_pool = threading.BoundedSemaphore(3)
@@ -814,14 +727,80 @@ def section_9_semaphore():
         print(f"  Thread {thread_id}: Waiting for connection...")
 
         with connection_pool:  # Acquire a "connection"
-            print(f"  Thread {thread_id}: ✓ Got connection! Working...")
+            with mutex:
+                print(
+                    f"  Thread {thread_id}: ✓ Got connection! Working..."
+                    f"{connection_pool._value} more connections available..."
+                )
             time.sleep(random.uniform(0.5, 1.5))  # Simulate work
             print(f"  Thread {thread_id}: Done, releasing connection")
 
+        with mutex:
+            print(
+                f"  Thread {thread_id}: after releasing..."
+                f"Now {connection_pool._value} connections available..."
+            )
+
+    print(f"At start {connection_pool._value} connections available...")
     # Create 7 threads competing for 3 connections
-    threads = []
+    threads: List[threading.Thread] = []
     for i in range(7):
         t = threading.Thread(target=access_database, args=(i,))
+        threads.append(t)
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    print("\n  ✓ All threads completed using only 3 concurrent connections!")
+
+    # Simulate a connection pool with max 3 connections- Class Version
+    print_subsection("Connection Pool Simulation (max 3 connections) - Class version")
+
+    class ConnectionPool:
+        def __init__(self):
+            self._connection_pool = threading.Semaphore(3)
+            self._mutex = threading.Lock()
+
+        def _acquire_connection(self):
+            print(f"  {threading.current_thread().name}: Waiting for connection...")
+            self._connection_pool.acquire()
+            with self._mutex:
+                print(
+                    f"  {threading.current_thread().name}: ✓ Got connection! Working..."
+                    f"{self._connection_pool._value} more connections available..."
+                )
+
+        def release_connection(self):
+            print(f"  {threading.current_thread().name}: Done, releasing connection")
+            self._connection_pool.release()
+            with mutex:
+                print(
+                    f"  {threading.current_thread().name}: after releasing..."
+                    f"Now {self._connection_pool._value} connections available..."
+                )
+
+        def access_database(self):
+            """Simulate database access with limited connections."""
+
+            self._acquire_connection()
+            time.sleep(random.uniform(0.5, 1.5))  # Simulate work
+            self.release_connection()
+
+    # Allow max 3 concurrent connections
+    connection_pool_obj = ConnectionPool()
+
+    print(
+        f"At start {connection_pool_obj._connection_pool._value} connections available..."
+    )
+    # Create 7 threads competing for 3 connections
+    threads: List[threading.Thread] = []
+    for i in range(7):
+        t = threading.Thread(
+            target=connection_pool_obj.access_database, name=f"Thread {i}"
+        )
         threads.append(t)
 
     for t in threads:
@@ -840,13 +819,15 @@ def section_9_semaphore():
     bounded = threading.BoundedSemaphore(2)
     bounded.acquire()
     bounded.acquire()
+
     bounded.release()
     bounded.release()
 
     try:
         bounded.release()  # This will raise an error!
+        print("SHOCKKKKING!!!! It Shouldn't have happened...")
     except ValueError as e:
-        print(f"  ✓ Caught error: {e}")
+        print(f"  ✓ Caught error [as expected]: {e}")
 
 
 # =============================================================================
@@ -854,7 +835,7 @@ def section_9_semaphore():
 # =============================================================================
 
 
-@announce("SECTION 10: THREAD SYNCHRONIZATION - EVENT")
+@announce("SECTION 10: THREAD SYNCHRONIZATION - EVENT - [threading.Event()]")
 def section_10_event():
     """
     Event is a simple signaling mechanism between threads.
@@ -876,37 +857,45 @@ def section_10_event():
 
     def start_server():
         """Simulate server startup."""
-        print("  Server: Starting up...")
-        time.sleep(2)  # Startup takes time
-        print("  Server: ✓ Ready to accept connections!")
+        print(
+            f"  [{threading.current_thread().name}]: Starting up...(will take 3 seconds)"
+        )
+        time.sleep(3)  # Startup takes time
+        print(f"  [{threading.current_thread().name}]: ✓ Ready to accept connections!")
         server_ready.set()  # Signal that server is ready
 
-    def client(client_id):
+    def client(timeout: int):
         """Client that waits for server to be ready."""
-        print(f"  Client {client_id}: Waiting for server...")
+        print(
+            f"  [{threading.current_thread().name}]: Waiting for server...(timeout={timeout} seconds)"
+        )
 
         # Wait for server to be ready (with optional timeout)
-        is_ready = server_ready.wait(timeout=5)
+        is_ready = server_ready.wait(timeout=timeout)
 
         if is_ready:
-            print(f"  Client {client_id}: ✓ Connected to server!")
+            print(f"  [{threading.current_thread().name}]: ✓ Connected to server!")
         else:
-            print(f"  Client {client_id}: ✗ Timeout waiting for server")
+            print(
+                f"  [{threading.current_thread().name}]: ✗ Timeout waiting for server"
+            )
 
-    # Start server thread
-    server_thread = threading.Thread(target=start_server)
-    server_thread.start()
+    all_threads: List[threading.Thread] = []
 
-    # Start multiple client threads
-    client_threads = []
+    # server thread
+    all_threads.append(threading.Thread(target=start_server, name="Server"))
+
+    # multiple client threads
     for i in range(3):
-        t = threading.Thread(target=client, args=(i,))
-        client_threads.append(t)
+        t = threading.Thread(
+            target=client, args=(i + 2,), name=f"Client-with-timeout-{i + 2}"
+        )
+        all_threads.append(t)
+
+    for t in all_threads:
         t.start()
 
-    # Wait for all
-    server_thread.join()
-    for t in client_threads:
+    for t in all_threads:
         t.join()
 
     # Reset example
@@ -927,7 +916,7 @@ def section_10_event():
 # =============================================================================
 
 
-@announce("SECTION 11: THREAD SYNCHRONIZATION - CONDITION")
+@announce("SECTION 11: THREAD SYNCHRONIZATION - CONDITION - [threading.Condition()]")
 def section_11_condition():
     """
     Condition allows threads to wait for a certain condition to become true.
@@ -946,60 +935,177 @@ def section_11_condition():
     print_subsection("Producer-Consumer with Condition")
 
     buffer = []
-    MAX_SIZE = 5
+    MAX_SIZE = 1
+
+    producer_count, each_produces = 9, 2  # total 24
+    consumer_count, each_consumes = 1, 18  # total 24
+
+    _item_id = 1
+    mutex = threading.Lock()
     condition = threading.Condition()
 
     def producer():
         """Produce items when buffer has space."""
-        for i in range(10):
+        nonlocal _item_id
+        curr_thread_name = threading.current_thread().name
+        for i in range(each_produces):
+            print(f"  [{curr_thread_name}]({i}): waiting for lock...")
             with condition:
                 # Wait while buffer is full
                 while len(buffer) >= MAX_SIZE:
-                    print(f"  Producer: Buffer full, waiting...")
+                    print(f"  [{curr_thread_name}]({i}): Buffer full, waiting...")
                     condition.wait()
+                    print(f"  [{curr_thread_name}]({i}): is notified!")
 
                 # Produce item
-                item = f"item-{i}"
+                with mutex:
+                    item = f"item-{_item_id}"
+                    _item_id += 1
                 buffer.append(item)
-                print(f"  Producer: Added {item}, buffer size: {len(buffer)}")
+                print(
+                    f"  [{curr_thread_name}]({i}): produced {item}, buffer size: {len(buffer)}"
+                )
 
                 # Notify consumers that item is available
+                print(f"  [{curr_thread_name}]({i}): Notifying One Consumer...")
                 condition.notify()
 
             time.sleep(random.uniform(0.1, 0.3))
 
-    def consumer(consumer_id):
+    def consumer():
         """Consume items when buffer has items."""
-        consumed = 0
-        while consumed < 5:  # Each consumer takes 5 items
+        i = 0
+        curr_thread_name = threading.current_thread().name
+        while i < each_consumes:
+            print(f"  [{curr_thread_name}]({i}): waiting for lock...")
             with condition:
                 # Wait while buffer is empty
                 while len(buffer) == 0:
-                    print(f"  Consumer {consumer_id}: Buffer empty, waiting...")
+                    print(f"  [{curr_thread_name}]({i}): Buffer empty, waiting...")
                     condition.wait()
+                    print(f"  [{curr_thread_name}]({i}): is notified!")
 
                 # Consume item
                 item = buffer.pop(0)
-                consumed += 1
+                i += 1
                 print(
-                    f"  Consumer {consumer_id}: Got {item}, buffer size: {len(buffer)}"
+                    f"  [{curr_thread_name}]({i}): consumed {item}, buffer size: {len(buffer)}"
                 )
 
                 # Notify producer that space is available
+                print(f"  [{curr_thread_name}]({i}): Notifying One Producer...")
                 condition.notify()
 
             time.sleep(random.uniform(0.1, 0.4))
 
     # Start threads
-    producer_thread = threading.Thread(target=producer)
-    consumer_threads = [threading.Thread(target=consumer, args=(i,)) for i in range(2)]
+    producer_threads = [
+        threading.Thread(target=producer, name=f"Producer-{i + 1}")
+        for i in range(producer_count)
+    ]
+    consumer_threads = [
+        threading.Thread(target=consumer, name=f"Consumer-{i + 1}")
+        for i in range(consumer_count)
+    ]
 
-    producer_thread.start()
-    for t in consumer_threads:
+    for t in consumer_threads + producer_threads:
         t.start()
 
-    producer_thread.join()
-    for t in consumer_threads:
+    for t in consumer_threads + producer_threads:
+        t.join()
+
+    print("\n  ✓ All items produced and consumed!")
+
+    print_subsection("Producer-Consumer with Event- [Better with separate conditions]")
+
+    buffer = []
+    MAX_SIZE = 1
+
+    producer_count, each_produces = 9, 2  # total 24
+    consumer_count, each_consumes = 1, 18  # total 24
+
+    _item_id = 1
+    mutex = threading.Lock()
+
+    _common_mutex = threading.Lock()
+    not_full = threading.Condition(_common_mutex)
+    not_empty = threading.Condition(_common_mutex)
+
+    # Had to pass a common lock/mutex here bcz:
+    #   1. otherwise each condition will use its own internal lock
+    #       and then one condition won't be able to call other's notify method
+    #       bcz Can't call notify() on a condition whose lock you don't hold
+    #   2. both the Producer and the Consumer need to modify the exact same resource (the buffer list).
+    def producer():
+        """Produce items when buffer has space."""
+        nonlocal _item_id
+        curr_thread_name = threading.current_thread().name
+
+        for i in range(each_produces):
+            print(f"  [{curr_thread_name}]({i}): waiting for lock...")
+            with not_full:
+                # Wait while buffer is full
+                while len(buffer) >= MAX_SIZE:
+                    print(f"  [{curr_thread_name}]({i}): Buffer full, waiting...")
+                    not_full.wait()
+                    print(f"  [{curr_thread_name}]({i}): is notified!")
+
+                # Produce item
+                with mutex:
+                    item = f"item-{_item_id}"
+                    _item_id += 1
+                buffer.append(item)
+                print(
+                    f"  [{curr_thread_name}]({i}): produced {item}, buffer size: {len(buffer)}"
+                )
+
+                # Notify consumers that item is available
+                print(f"  [{curr_thread_name}]({i}): Notifying One Consumer...")
+                not_empty.notify()  # not empty is guarranteed bcz produced one just now
+
+            time.sleep(random.uniform(0.1, 0.3))
+
+    def consumer():
+        """Consume items when buffer has items."""
+        i = 0
+        curr_thread_name = threading.current_thread().name
+        while i < each_consumes:
+            print(f"  [{curr_thread_name}]({i}): waiting for lock...")
+            with not_empty:
+                # Wait while buffer is empty
+                while len(buffer) == 0:
+                    print(f"  [{curr_thread_name}]({i}): Buffer empty, waiting...")
+                    not_empty.wait()
+                    print(f"  [{curr_thread_name}]({i}): is notified!")
+
+                # Consume item
+                item = buffer.pop(0)
+                i += 1
+                print(
+                    f"  [{curr_thread_name}]({i}): consumed {item}, buffer size: {len(buffer)}"
+                )
+
+                # Notify producer that space is available
+                print(f"  [{curr_thread_name}]({i}): Notifying One Producer...")
+                not_full.notify()  # not full is guarranteed bcz consumed one just now
+
+            time.sleep(random.uniform(0.1, 0.4))
+
+    # Start threads
+
+    producer_threads = [
+        threading.Thread(target=producer, name=f"Producer-{i + 1}")
+        for i in range(producer_count)
+    ]
+    consumer_threads = [
+        threading.Thread(target=consumer, name=f"Consumer-{i + 1}")
+        for i in range(consumer_count)
+    ]
+
+    for t in consumer_threads + producer_threads:
+        t.start()
+
+    for t in consumer_threads + producer_threads:
         t.join()
 
     print("\n  ✓ All items produced and consumed!")
@@ -1010,7 +1116,7 @@ def section_11_condition():
 # =============================================================================
 
 
-@announce("SECTION 12: THREAD SYNCHRONIZATION - BARRIER")
+@announce("SECTION 12: THREAD SYNCHRONIZATION - BARRIER - [threading.Barrier(n)]")
 def section_12_barrier():
     """
     Barrier blocks threads until a specified number of threads are waiting.
@@ -1032,7 +1138,7 @@ def section_12_barrier():
 
     def racer(name):
         """A racer that waits at the starting line."""
-        print(f"  {name}: Getting ready...")
+        print(f"  {name}: Getting ready for the race...")
         time.sleep(random.uniform(0.5, 1.5))  # Preparation time varies
 
         print(f"  {name}: Ready! Waiting at start line...")
@@ -1060,11 +1166,11 @@ def section_12_barrier():
     print_subsection("Barrier with Action Callback")
 
     def barrier_action():
-        """Called when all threads reach barrier, before releasing."""
+        # Called when all threads reach barrier, before releasing.
         print("\n  >>> All threads reached barrier! Starting countdown... <<<")
         for i in range(3, 0, -1):
-            print(f"  >>> {i}...")
-            time.sleep(0.3)
+            print(f"  >>> {i} <<<", end="\r")
+            time.sleep(1)
         print("  >>> GO! <<<\n")
 
     barrier_with_action = threading.Barrier(3, action=barrier_action)
@@ -1086,7 +1192,7 @@ def section_12_barrier():
 # =============================================================================
 
 
-@announce("SECTION 13: THREAD-LOCAL DATA")
+@announce("SECTION 13: THREAD-LOCAL DATA - [threading.local()]")
 def section_13_thread_local():
     """
     Thread-local data is data that is unique to each thread.
@@ -1096,12 +1202,23 @@ def section_13_thread_local():
     - Database connections per thread
     - Request context in web apps
     - User session data
+
+    extremely common in Web Frameworks (like Flask or Django).
+        - Imagine a web server handling 100 requests at the same time using threads.
+          You want to access the "current user" or the "current database connection."
+        - Instead of passing the user object into every single function as an argument (func(user, db, data)),
+          you can store it in threading.local().
+            - Request A (Thread A) sets local.user = "Alice"
+            - Request B (Thread B) sets local.user = "Bob"
+        - Now, any function running inside Thread A can just ask local.user and get "Alice,"
+          without worrying about "Bob" overwriting it.
     """
 
     print("  Thread-local: Each thread has its own copy of the data")
     print("  No need for locks - each thread has isolated data\n")
 
-    # Create thread-local storage
+    # Create thread-local storage ==> a single object that secretly holds separate data for each thread.
+    # acts like a smart dict that automatically uses the Current Thread ID as a key.
     thread_local_data = threading.local()
 
     def worker(worker_id):
@@ -1130,7 +1247,7 @@ def section_13_thread_local():
         t.join()
 
     # Show that main thread doesn't have the data
-    print(f"\n  Main thread trying to access thread-local data:")
+    print("\n  Main thread trying to access thread-local data:")
     try:
         print(f"    worker_id = {thread_local_data.worker_id}")
     except AttributeError:
@@ -1142,7 +1259,9 @@ def section_13_thread_local():
 # =============================================================================
 
 
-@announce("SECTION 14: TIMER THREADS")
+@announce(
+    "SECTION 14: TIMER THREADS - [threading.Timer(interval, function, args, kwargs)]"
+)
 def section_14_timer():
     """
     Timer threads execute a function after a specified delay.
@@ -1155,15 +1274,15 @@ def section_14_timer():
     print_subsection("Basic Timer")
 
     def delayed_message(message):
-        print(f"  ⏰ Timer fired: {message}")
+        print(f"  [{time.time()}]: ⏰ Timer fired: {message}")
 
     # Create a timer (2 second delay)
     timer = threading.Timer(1.0, delayed_message, args=("Hello from the future!",))
 
-    print("  Starting timer (1 second delay)...")
+    print(f"  [{time.time()}]: Starting timer (1 second delay)...")
     timer.start()
 
-    print("  Waiting for timer...")
+    print(f"  [{time.time()}]: Waiting for timer...")
     timer.join()  # Wait for timer to complete
 
     print_subsection("Cancellable Timer")
@@ -1191,10 +1310,11 @@ def section_14_timer():
             self.function = function
             self.args = args
             self.kwargs = kwargs
+
             self.running = False
             self.timer = None
 
-        def _run(self):
+        def _run(self):  # runs the function once and then schedule next run
             if self.running:
                 self.function(*self.args, **self.kwargs)
                 self.timer = threading.Timer(self.interval, self._run)
@@ -1215,13 +1335,13 @@ def section_14_timer():
     def tick():
         nonlocal counter
         counter += 1
-        print(f"  Tick {counter}!")
+        print(f"  [{threading.current_thread().name}]: Tick {counter}!")
 
     repeating = RepeatingTimer(0.3, tick)
     repeating.start()
 
     print("  Repeating timer started...")
-    time.sleep(1.5)  # Let it tick a few times
+    time.sleep(2.5)  # Let it tick for sometime
 
     repeating.stop()
     print("  Repeating timer stopped!")
@@ -1232,7 +1352,9 @@ def section_14_timer():
 # =============================================================================
 
 
-@announce("SECTION 15: THREAD-SAFE QUEUE (PRODUCER-CONSUMER)")
+@announce(
+    "SECTION 15: THREAD-SAFE QUEUE (PRODUCER-CONSUMER) - [queue.Queue(maxsize=0)]"
+)
 def section_15_queue():
     """
     queue.Queue is a thread-safe queue for communication between threads.
@@ -1249,51 +1371,69 @@ def section_15_queue():
 
     print_subsection("Producer-Consumer Pattern")
 
-    work_queue = queue.Queue(maxsize=5)  # Max 5 items
+    work_queue = queue.Queue(maxsize=5)
+    # Max 5 items ==> .put(), blocks if full
 
     def producer(producer_id, num_items):
         """Produce items and put them in the queue."""
-        for i in range(num_items):
+        for i in range(1, num_items + 1):
             item = f"P{producer_id}-Item{i}"
             work_queue.put(item)  # Blocks if queue is full
-            print(f"  Producer {producer_id}: Added {item}")
+            print(f"  Producer {producer_id}: produced {item}")
             time.sleep(random.uniform(0.1, 0.3))
 
         print(f"  Producer {producer_id}: Done producing")
 
     def consumer(consumer_id):
         """Consume items from the queue."""
+        tab = "\t\t\t\t"
         while True:
             try:
                 # Block for at most 1 second
                 item = work_queue.get(timeout=1.0)
-                print(f"  Consumer {consumer_id}: Processing {item}")
+                print(f"  {tab}Consumer {consumer_id}: consuming {item}")
                 time.sleep(random.uniform(0.2, 0.4))
-                work_queue.task_done()  # Signal that item is processed
+                work_queue.task_done()
+                # A Signal to queue that the item has been processed
+                # It will simply DOWN the counter (-1)
             except queue.Empty:
-                print(f"  Consumer {consumer_id}: No more items, exiting")
+                print(f"  {tab}Consumer {consumer_id}: No more items in queue, exiting")
                 break
 
-    # Start producers
-    producers = [threading.Thread(target=producer, args=(i, 3)) for i in range(2)]
+    # 2 producers, each producing 3 items
+    producers = [threading.Thread(target=producer, args=(i, 20)) for i in range(2)]
 
-    # Start consumers
+    # 2 consumers
     consumers = [threading.Thread(target=consumer, args=(i,)) for i in range(2)]
 
-    for p in producers:
-        p.start()
-    for c in consumers:
-        c.start()
+    for t in producers + consumers:
+        t.start()
 
-    for p in producers:
-        p.join()
-    for c in consumers:
-        c.join()
+    for t in producers + consumers:
+        t.join()
 
     # Queue methods
-    print_subsection("Queue Methods")
+    print_subsection("Queue - [queue.Queue(maxsize=0)]")
+    """
+    Inside queue.Queue, there is a hidden counter called unfinished_tasks.
+        [1] q.put(item): counter goes UP (+1).
+        [2] q.get(): 
+                - You take the item, but the counter still the same. 
+                - The Queue knows you have the item, 
+                  but it doesn't know if you've finished working on it.
+        [3] q.task_done(): counter goes DOWN (-1).
+        [4] q.join(): 
+                - This method blocks (freezes) the main thread until that counter hits 0.
+    
+    """
 
     q = queue.Queue(maxsize=3)
+    print("  a queue.Queue with maxsize=3 initialized")
+
+    try:
+        x = q.get(block=True, timeout=0.5)  # Would block, so raises Full
+    except queue.Empty:
+        print("  q.get(block=True, timeout=0.5) raised queue.Empty exception")
 
     print("  Queue operations:")
     print(f"  empty(): {q.empty()}")
@@ -1310,27 +1450,33 @@ def section_15_queue():
     try:
         q.put("d", block=False)  # Would block, so raises Full
     except queue.Full:
-        print("  put(block=False) raised Full exception")
+        print("  q.put(block=False) raised queue.Full exception")
 
     item = q.get()
     print(f"  get() returned: {item}")
 
     # Other queue types
-    print_subsection("Queue Types")
+    print_subsection("Stack - [queue.LifoQueue(maxsize=0)]")
 
     # LIFO Queue (Stack)
     lifo = queue.LifoQueue()
     lifo.put(1)
     lifo.put(2)
     lifo.put(3)
+
+    print("  put 1, 2, 3")
     print(f"  LifoQueue: {lifo.get()}, {lifo.get()}, {lifo.get()}")  # 3, 2, 1
 
+    print_subsection("Priority Queue - [queue.PriorityQueue(maxsize=0)]")
     # Priority Queue
     pq = queue.PriorityQueue()
+    # Just like a min heap, gives a minimum item first
+
     pq.put((3, "low priority"))
     pq.put((1, "high priority"))
     pq.put((2, "medium priority"))
-    print(f"  PriorityQueue:")
+    print("  PriorityQueue:")
+
     while not pq.empty():
         print(f"    {pq.get()}")
 
@@ -1353,9 +1499,16 @@ def section_16_thread_pool():
     def fetch_url(url):
         """Simulate fetching a URL."""
         time.sleep(random.uniform(0.5, 1.5))
-        return f"Content from {url}"
+        return f"[{threading.current_thread().name}] Data from {url}"
 
-    urls = [f"https://example.com/page{i}" for i in range(5)]
+    urls = [
+        "google.com",
+        "facebook.com",
+        "yahoo.com",
+        "bing.com",
+        "duckduckgo.com",
+        "github.com",
+    ]
 
     # Method 1: map()
     print_subsection("Using map() - Ordered Results")
@@ -1364,41 +1517,51 @@ def section_16_thread_pool():
         results = list(executor.map(fetch_url, urls))
 
     for url, result in zip(urls, results):
-        print(f"  {url}: {result[:30]}...")
+        print(f"  {url}: {result}...")
 
     # Method 2: submit() + as_completed()
     print_subsection("Using submit() + as_completed() - Results as They Finish")
 
+    # below is the gold-standard pattern for fast, responsive concurrent downloads in Python.
     with ThreadPoolExecutor(max_workers=3) as executor:
-        # Submit all tasks
         future_to_url = {executor.submit(fetch_url, url): url for url in urls}
+        # Maps each running Future back to its original URL.
 
         # Process results as they complete
         for future in as_completed(future_to_url):
+            # Yields futures the instant they finish (fast URLs appear first).
+
             url = future_to_url[future]
+            # Instantly know which URL just completed.
             try:
                 result = future.result()
-                print(f"  ✓ {url}: {result[:30]}...")
+                # Get the result (or raise exception if failed).
+                print(f"  ✓ {url}: {result}...")
             except Exception as e:
                 print(f"  ✗ {url}: Error - {e}")
 
     # Exception handling
     print_subsection("Exception Handling")
 
-    def risky_operation(x):
-        if x == 2:
-            raise ValueError(f"Error processing {x}")
-        return x * 10
+    def fetch_url(url):
+        """Simulate fetching a URL."""
+        time.sleep(random.uniform(0.5, 1.5))
+        if "facebook" in url:
+            raise ValueError(
+                f"[{threading.current_thread().name}]: Error processing {url}"
+            )
+        return f"[{threading.current_thread().name}] Data from {url}"
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(risky_operation, i) for i in range(4)]
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_to_url = {executor.submit(fetch_url, url): url for url in urls}
 
-        for future in as_completed(futures):
+        for future in as_completed(future_to_url):
+            url = future_to_url[future]
             try:
                 result = future.result()
-                print(f"  Result: {result}")
+                print(f"  ✓ {url}: {result}...")
             except ValueError as e:
-                print(f"  Caught exception: {e}")
+                print(f"  ✗ {url}: Error - {e}")
 
 
 # =============================================================================
@@ -1584,5 +1747,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # main1()
     main()
