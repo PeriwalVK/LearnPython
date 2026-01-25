@@ -1607,8 +1607,9 @@ def section_17_best_practices():
     lock_b.acquire()
     lock_a.acquire()  # Waiting for Thread 1 to release
     
-    # ✓ SOLUTION - Always acquire locks in the same order
-    # Both threads: lock_a first, then lock_b
+    ✓ SOLUTION - 
+        Always acquire locks in the same order  =>  first lock_a, then lock_b
+        And release in the opposite order       =>  first lock_b, then lock_a
     """)
 
     # Pitfall 3: Race condition with check-then-act
@@ -1616,13 +1617,18 @@ def section_17_best_practices():
     print("""
     # ❌ BAD - Race condition between check and action
     if not queue.empty():
-        item = queue.get()  # Another thread might get it first!
+        item = queue.get()  # ← BAD! Two-step race
+                            # Another thread might sneak in and get it first!
     
     # ✓ GOOD - Use exception handling or blocking
     try:
-        item = queue.get(block=False)
+        item = queue.get(block=False)   # ← GOOD! One atomic operation
+        # If something is there → you get it. 
+        # If not → immediate Empty exception.
+        # Hence No race possible
     except queue.Empty:
         pass
+    
     """)
 
     # Best practices summary
@@ -1630,11 +1636,11 @@ def section_17_best_practices():
     print("""
     1. Use `with` statement for locks (context managers)
     
-    2. Prefer `ThreadPoolExecutor` over raw `threading` for most cases
+    2. Prefer `concurrent.futures.ThreadPoolExecutor` over raw `threading` for most cases
     
     3. Use `queue.Queue` for thread communication
     
-    4. Use `Event` for simple signaling between threads
+    4. Use `threading.Event()` for simple signaling between threads
     
     5. Keep critical sections (locked code) as short as possible
     
@@ -1642,12 +1648,9 @@ def section_17_best_practices():
     
     7. Use `threading.local()` for thread-specific data
     
-    8. Remember: threading is for I/O-bound tasks
-       Use multiprocessing for CPU-bound tasks (GIL limitation)
+    8. Always handle exceptions in threads
     
-    9. Always handle exceptions in threads
-    
-    10. Use timeouts to prevent indefinite blocking:
+    9. Use timeouts to prevent indefinite blocking:
         - lock.acquire(timeout=5)
         - queue.get(timeout=5)
         - event.wait(timeout=5)
@@ -1656,24 +1659,58 @@ def section_17_best_practices():
     # GIL reminder
     print_subsection("Remember: The GIL")
     print("""
-    Python has a Global Interpreter Lock (GIL).
+    Python has a Global Interpreter Lock (GIL) → only one thread can run Python code at a time.
+        
     This means:
     
-    ✓ Threading works great for I/O-bound tasks:
-      - Network requests
-      - File operations
-      - Database queries
-      - User input
+    [✓] Threading  (or asyncio) works great for I/O-bound tasks (Waiting tasks):
+        - Network requests
+        - File operations
+        - Disk I/O
+        - API calls
+        - Sleep
+        - Database queries
+        - User input
+        - Downloading files
+        - Reading/writing files
     
-    ✗ Threading does NOT speed up CPU-bound tasks:
-      - Mathematical computations
-      - Image processing
-      - Data crunching
+    [✗] Threading does NOT speed up CPU-bound tasks (Heavy Calculation tasks):
+        - Mathematical computations
+        - Image processing
+        - Data crunching
+        - Machine learning
+        - Data analysis
     
-    For CPU-bound tasks, use:
-      - multiprocessing
-      - ProcessPoolExecutor
-      - Or libraries like NumPy that release the GIL
+        For CPU-bound tasks, use:
+        - multiprocessing
+        - ProcessPoolExecutor
+        - Or libraries like NumPy that release the GIL
+          
+    # --------------------------------------------------------------------------------
+    # | Task Type        | Example          | Choice  | Why                          |
+    # |------------------|------------------|---------|------------------------------|
+    # | Download URLs    | requests.get(),  | Thread  | Wait for Net -> GIL releases |
+    # |                  | aiohttp          |         | -> threads fly!              |
+    # |------------------|------------------|---------|------------------------------|
+    # | Resize Images    | Pillow, OpenCV   | Multi-  | CPU work -> GIL blocks       |
+    # |                  | loops            | Proc    | threads -> 1 core used       |
+    # |                  |                  |         | → slow!                      |
+    # |------------------|------------------|---------|------------------------------|
+    # | Fetch API +      | Network + light  | Thread  | 95% waiting -> threading     |
+    # | Parse JSON       | JSON parse       |         | wins easily.                 |
+    # |------------------|------------------|---------|------------------------------|
+    # | ML Model Train,  | Pure CPU/Math    | Multi-  | Bypasses GIL -> uses all     |
+    # | Encrypt files,   |                  | Proc    | CPU cores (4-8x faster).     |
+    # | Video Encoding   |                  |         |                              |
+    # |------------------|------------------|---------|------------------------------|
+    # | Web Scraping     | Selenium,        | Thread  | Lots of waiting -> Fast      |
+    # |                  | Requests         |         | (50-200 threads).            |
+    # |------------------|------------------|---------|------------------------------|
+    # | Number Crunch,   | Pandas, Ray      | Multi-  | Must bypass GIL or it        |
+    # | Ray Tracing,     | Tracing          | Proc    | stays slow (1 core).         |
+    # | pandas heavy ops |                  |         |                              |
+    # |------------------|------------------|---------|------------------------------|
+    # |                  |                  |         |                              |
     """)
 
 
@@ -1688,8 +1725,8 @@ def main():
     ╔══════════════════════════════════════════════════════════════════════╗
     ║              PYTHON THREADING COMPLETE TUTORIAL                      ║
     ║                                                                      ║
-    ║  This tutorial covers all important aspects of Python threading.    ║
-    ║  Each section builds on the previous one.                           ║
+    ║  This tutorial covers all important aspects of Python threading.     ║
+    ║  Each section builds on the previous one.                            ║
     ╚══════════════════════════════════════════════════════════════════════╝
     """)
 
