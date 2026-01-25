@@ -1663,7 +1663,7 @@ def section_17_best_practices():
         
     This means:
     
-    [✓] Threading  (or asyncio) works great for I/O-bound tasks (Waiting tasks):
+    [✓] Threading  (or asyncio) works great for I/O-bound tasks (Waiting for something external):
         - Network requests
         - File operations
         - Disk I/O
