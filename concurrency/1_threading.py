@@ -1686,31 +1686,31 @@ def section_17_best_practices():
         - ProcessPoolExecutor
         - Or libraries like NumPy that release the GIL
           
-    # --------------------------------------------------------------------------------
-    # | Task Type        | Example          | Choice  | Why                          |
-    # |------------------|------------------|---------|------------------------------|
-    # | Download URLs    | requests.get(),  | Thread  | Wait for Net -> GIL releases |
-    # |                  | aiohttp          |         | -> threads fly!              |
-    # |------------------|------------------|---------|------------------------------|
-    # | Resize Images    | Pillow, OpenCV   | Multi-  | CPU work -> GIL blocks       |
-    # |                  | loops            | Proc    | threads -> 1 core used       |
-    # |                  |                  |         | → slow!                      |
-    # |------------------|------------------|---------|------------------------------|
-    # | Fetch API +      | Network + light  | Thread  | 95% waiting -> threading     |
-    # | Parse JSON       | JSON parse       |         | wins easily.                 |
-    # |------------------|------------------|---------|------------------------------|
-    # | ML Model Train,  | Pure CPU/Math    | Multi-  | Bypasses GIL -> uses all     |
-    # | Encrypt files,   |                  | Proc    | CPU cores (4-8x faster).     |
-    # | Video Encoding   |                  |         |                              |
-    # |------------------|------------------|---------|------------------------------|
-    # | Web Scraping     | Selenium,        | Thread  | Lots of waiting -> Fast      |
-    # |                  | Requests         |         | (50-200 threads).            |
-    # |------------------|------------------|---------|------------------------------|
-    # | Number Crunch,   | Pandas, Ray      | Multi-  | Must bypass GIL or it        |
-    # | Ray Tracing,     | Tracing          | Proc    | stays slow (1 core).         |
-    # | pandas heavy ops |                  |         |                              |
-    # |------------------|------------------|---------|------------------------------|
-    # |                  |                  |         |                              |
+    # ╔══════════════════╦══════════════════╦═════════╦══════════════════════════════╗
+    # ║ Task Type        ║ Example          ║ Choice  ║ Why                          ║
+    # ╠══════════════════╬══════════════════╬═════════╬══════════════════════════════╣
+    # ║ Download URLs    ║ requests.get(),  ║ Thread  ║ Wait for Net -> GIL releases ║
+    # ║                  ║ aiohttp          ║         ║ -> threads fly!              ║
+    # ╠══════════════════╬══════════════════╬═════════╬══════════════════════════════╣
+    # ║ Resize Images    ║ Pillow, OpenCV   ║ Multi-  ║ CPU work -> GIL blocks       ║
+    # ║                  ║ loops            ║ Proc    ║ threads -> 1 core used       ║
+    # ║                  ║                  ║         ║ → slow!                      ║
+    # ╠══════════════════╬══════════════════╬═════════╬══════════════════════════════╣
+    # ║ Fetch API +      ║ Network + light  ║ Thread  ║ 95% waiting -> threading     ║
+    # ║ Parse JSON       ║ JSON parse       ║         ║ wins easily.                 ║
+    # ╠══════════════════╬══════════════════╬═════════╬══════════════════════════════╣
+    # ║ ML Model Train,  ║ Pure CPU/Math    ║ Multi-  ║ Bypasses GIL -> uses all     ║
+    # ║ Encrypt files,   ║                  ║ Proc    ║ CPU cores (4-8x faster).     ║
+    # ║ Video Encoding   ║                  ║         ║                              ║
+    # ╠══════════════════╬══════════════════╬═════════╬══════════════════════════════╣
+    # ║ Web Scraping     ║ Selenium,        ║ Thread  ║ Lots of waiting -> Fast      ║
+    # ║                  ║ Requests         ║         ║ (50-200 threads).            ║
+    # ╠══════════════════╬══════════════════╬═════════╬══════════════════════════════╣
+    # ║ Number Crunch,   ║ Pandas, Ray      ║ Multi-  ║ Must bypass GIL or it        ║
+    # ║ Ray Tracing,     ║ Tracing          ║ Proc    ║ stays slow (1 core).         ║
+    # ║ pandas heavy ops ║                  ║         ║                              ║
+    # ╚══════════════════╩══════════════════╩═════════╩══════════════════════════════╝
+    # ║                  ║                  ║         ║                              ║
     """)
 
 
