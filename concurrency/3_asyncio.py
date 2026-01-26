@@ -1030,12 +1030,13 @@ async def _6_waiting_for_tasks():
 
         # Wait with timeout
         print("Waiting for slow operation with 1 second timeout...")
-
         try:
             result = await asyncio.wait_for(slow_operation(), timeout=1.0)
-            print(f"Result: {result}")
+            print(
+                f"Result: {result} [SHOULDN'T HAVE REACHED HERE]"
+            )  # Shouldn't reach here
         except asyncio.TimeoutError:
-            print("Operation timed out!")
+            print("Operation timed out!")  # Should reach here
 
         # Successful wait
         async def fast_operation():
@@ -1043,8 +1044,13 @@ async def _6_waiting_for_tasks():
             return "Fast result!"
 
         print("\nWaiting for fast operation with 1 second timeout...")
-        result = await asyncio.wait_for(fast_operation(), timeout=1.0)
-        print(f"Result: {result}")
+        try:
+            result = await asyncio.wait_for(fast_operation(), timeout=1.0)
+            print(f"Result: {result}")  # Should reach here
+        except asyncio.TimeoutError:
+            print(
+                "Operation timed out! [SHOULDN'T HAVE REACHED HERE]"
+            )  # Shouldn't reach here
 
     await wait_for_demo()
 
@@ -1062,10 +1068,10 @@ async def _6_waiting_for_tasks():
             return f"Fetched {url} in {delay}s"
 
         tasks = [
-            fetch_with_delay("url1", 1.5), # yielded last
-            fetch_with_delay("url2", 0.3), # yielded first
-            fetch_with_delay("url3", 0.8), # yielded third
-            fetch_with_delay("url4", 0.5), # yielded second
+            fetch_with_delay("url1", 1.5),  # yielded last
+            fetch_with_delay("url2", 0.3),  # yielded first
+            fetch_with_delay("url3", 0.8),  # yielded third
+            fetch_with_delay("url4", 0.5),  # yielded second
         ]
 
         print("Processing results as they complete:")
@@ -1169,9 +1175,9 @@ async def _6_waiting_for_tasks():
 # asyncio.run(manual_timeout())
 
 
-# # ================================================================================
-# # SECTION 8: ASYNC SLEEP VS TIME SLEEP
-# # ================================================================================
+# ================================================================================
+# SECTION 8: ASYNC SLEEP VS TIME SLEEP
+# ================================================================================
 
 
 async def _8_sleep_comparison():
@@ -1210,9 +1216,6 @@ async def _8_sleep_comparison():
         async_task("C"),
     )
     print(f"Total time (non-blocking): {time.perf_counter() - start:.2f}s")
-
-
-# asyncio.run(sleep_comparison())
 
 
 # # ================================================================================
@@ -3047,15 +3050,23 @@ async def _17_taskgroups():
 
 async def main():
     _1_introduction_to_asyncio()
-    await _2_basic_concepts()
-    await _3_running_coroutines()
-    await _4_tasks_creating_and_managing_tasks()
-    await _5_gather_coroutines()
-    await _6_waiting_for_tasks()
-    await _8_sleep_comparison()
-    await _13_running_blocking_sync_code_in_async_context()
-    await _17_taskgroups()
+    routines_obj_list = [
+        _2_basic_concepts(),
+        _3_running_coroutines(),
+        _4_tasks_creating_and_managing_tasks(),
+        _5_gather_coroutines(),
+        _6_waiting_for_tasks(),
+        _8_sleep_comparison(),
+        _13_running_blocking_sync_code_in_async_context(),
+        _17_taskgroups(),
+    ]
+    for routine_obj in routines_obj_list:
+        await routine_obj
+    # await asyncio.gather(*routines_obj_list)
 
 
 if __name__ == "__main__":
+    start_time = time.perf_counter()
     asyncio.run(main())
+    end_time = time.perf_counter()
+    print(f"Whole script Finished in {end_time - start_time:0.4f} seconds")
