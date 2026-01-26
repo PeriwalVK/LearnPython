@@ -6,6 +6,9 @@
 
 Author: Tutorial Script
 Python Version: 3.7+ (some features require 3.9+, 3.11+)
+YouTube references: [
+    https://www.youtube.com/watch?v=oAkLSJNr5zY,
+]
 
 This tutorial covers everything you need to know about Python's asyncio library
 for writing concurrent code using the async/await syntax.
@@ -37,16 +40,10 @@ TABLE OF CONTENTS:
 """
 
 import asyncio
-from concurrent.futures import thread
+import random
 import threading
 import time
-import random
-import functools
 import concurrent.futures
-from datetime import datetime
-from typing import List, Optional, Any
-import sys
-import os
 
 # Check Python version for feature availability
 # PYTHON_VERSION = sys.version_info
@@ -97,10 +94,11 @@ WHEN TO USE ASYNCIO:
 ✓ Real-time data processing
 ✓ WebSocket connections
 ✓ API clients making many requests
+✓ CPU-bound tasks offloaded via executors (threads / processes)
 
 WHEN NOT TO USE ASYNCIO:
 ========================
-✗ CPU-bound tasks (use multiprocessing instead)
+✗ CPU-bound tasks directly in the event loop (use multiprocessing instead)
 ✗ Simple scripts with no concurrency needs
 ✗ When using libraries that don't support async
 
@@ -169,7 +167,7 @@ async def _2_basic_concepts():
     # Must close unused coroutine to avoid warning
     coroutine_obj.close()
 
-    # To actually run a coroutine, use asyncio.run()
+    # To actually run a coroutine, use asyncio.run() or await it
     coroutine_obj = my_first_coroutine()
 
     result = await coroutine_obj
@@ -281,7 +279,7 @@ async def _2_basic_concepts():
 
     async def fetch_data_async_sleep(param):
         print(f"Do something with {param}...")
-        await asyncio.sleep(param)
+        await asyncio.sleep(param)  # Non-blocking sleep
         print(f"Done with {param}")
         return f"Result of {param}"
 
@@ -315,7 +313,7 @@ async def _2_basic_concepts():
 
     async def fetch_data_time_sleep(param):
         print(f"Do something with {param}...")
-        time.sleep(param)
+        time.sleep(param)  # Blocking sleep
         print(f"Done with {param}")
         return f"Result of {param}"
 
@@ -378,7 +376,7 @@ async def _3_running_coroutines():
     # 3. Closes the loop
     # 4. Returns the result
 
-    # result = asyncio.run(main_entry_point())
+    # asyncio.run(main_entry_point()) ki jagah ye call krna pdega idhar
     result = await main_entry_point()
     print(f"Result: {result}")
 
@@ -406,13 +404,13 @@ async def _3_running_coroutines():
         # These run one after another,
         # because it Schedules and Runs them to completion in a single step one by one
         #     so when result 1 is getting scheduled and running
-        #     => result2 and result 3 wali lines are not yet reached
-        result1 = await task_example("A", 1)
-        result2 = await task_example("B", 1)
-        result3 = await task_example("C", 1)
+        #     => result2 and result 3 wali lines are not yet reached -> so not yet scheduled
+        result1 = await task_example("A", 1)  # 1 second
+        result2 = await task_example("B", 1)  # 1 second
+        result3 = await task_example("C", 1)  # 1 second
 
         elapsed = time.perf_counter() - start
-        print(f"Sequential time: {elapsed:.2f}s")
+        print(f"Sequential time: {elapsed:.2f}s")  # 3 seconds
         return [result1, result2, result3]
 
     async def run_tasks_concurrently():
@@ -424,12 +422,12 @@ async def _3_running_coroutines():
         # (handed over to event loop and scheduled to run whenever it gets a chance).
         #     so jab task 1 me `await asyncio.sleep(delay)` call hoga,
         #     then task 1 will be suspended and event loop will meanwhile look for other scheduled tasks,
-        #     which is one of task2 or task 3
+        #     which is one of task2 or task 3 (task 2 hi hoga bcz internally FIFO hai)
         # Hence concurrency will be achieved
         # refer to https://www.youtube.com/watch?v=oAkLSJNr5zY
-        task1 = asyncio.create_task(task_example("A", 1))
-        task2 = asyncio.create_task(task_example("B", 1))
-        task3 = asyncio.create_task(task_example("C", 1))
+        task1 = asyncio.create_task(task_example("A", 1))  # 1 second
+        task2 = asyncio.create_task(task_example("B", 1))  # 1 second
+        task3 = asyncio.create_task(task_example("C", 1))  # 1 second
 
         # Wait for all tasks to complete
         result1 = await task1
@@ -438,7 +436,7 @@ async def _3_running_coroutines():
         # time.sleep(5)
 
         elapsed = time.perf_counter() - start
-        print(f"Concurrent time: {elapsed:.2f}s")
+        print(f"Concurrent time: {elapsed:.2f}s")  # 1 second
         return [result1, result2, result3]
 
     # Compare sequential vs concurrent
@@ -446,10 +444,12 @@ async def _3_running_coroutines():
     await run_tasks_concurrently()
 
     # ------------------------------------------------------------------------------
-    # 3.3 Task Naming and Identification
+    # 3.3 Task Naming and Identification - [asyncio.current_task().get_name()]
     # ------------------------------------------------------------------------------
 
-    print_subsection("3.3 Task Naming and Identification")
+    print_subsection(
+        "3.3 Task Naming and Identification - [asyncio.current_task().get_name()]"
+    )
 
     async def named_task_demo():
         """Demonstrate task naming."""
@@ -478,183 +478,255 @@ async def _3_running_coroutines():
     await named_task_demo()
 
 
-# # ================================================================================
-# # SECTION 4: TASKS - CREATING AND MANAGING TASKS
-# # ================================================================================
-
-# separator("4. TASKS - CREATING AND MANAGING TASKS")
-
-# # ------------------------------------------------------------------------------
-# # 4.1 Task States and Properties
-# # ------------------------------------------------------------------------------
-
-# print_subsection("4.1 Task States and Properties")
+# ================================================================================
+# SECTION 4: TASKS - CREATING AND MANAGING TASKS
+# ================================================================================
 
 
-# async def demonstrate_task_states():
-#     """Show different task states and properties."""
+async def _4_tasks_creating_and_managing_tasks():
+    separator("4. TASKS - CREATING AND MANAGING TASKS")
 
-#     async def slow_operation():
-#         await asyncio.sleep(0.5)
-#         return "Done!"
+    # ------------------------------------------------------------------------------
+    # 4.1 Task States and Properties
+    # ------------------------------------------------------------------------------
 
-#     async def failing_operation():
-#         await asyncio.sleep(0.2)
-#         raise ValueError("Something went wrong!")
+    print_subsection("4.1 Task States and Properties")
 
-#     # Create a task
-#     task = asyncio.create_task(slow_operation(), name="SlowTask")
+    async def demonstrate_task_states():
+        """Show different task states and properties."""
 
-#     # Check state before completion
-#     print(f"Task name: {task.get_name()}")
-#     print(f"Done: {task.done()}")
-#     print(f"Cancelled: {task.cancelled()}")
+        async def slow_operation():
+            await asyncio.sleep(0.5)
+            return "Done!"
 
-#     # Wait for completion
-#     result = await task
+        async def failing_operation():
+            await asyncio.sleep(0.2)
+            raise ValueError("Something went wrong!")
 
-#     # Check state after completion
-#     print(f"\nAfter completion:")
-#     print(f"Done: {task.done()}")
-#     print(f"Result: {task.result()}")
+        print("\n--- Task with No Exception  [task.result()] ---")
 
-#     # Task with exception
-#     print("\n--- Task with Exception ---")
-#     failing_task = asyncio.create_task(failing_operation(), name="FailingTask")
+        # Create a task
+        task = asyncio.create_task(slow_operation(), name="SlowTask")
 
-#     try:
-#         await failing_task
-#     except ValueError as e:
-#         print(f"Task raised exception: {e}")
-#         print(f"Exception: {failing_task.exception()}")
+        # Check state before completion
+        print(f"Task name: {task.get_name()}")
+        print("\nBefore awaiting/completion:")
+        print(f"Done: {task.done()}")
+        print(f"Cancelled: {task.cancelled()}")
 
+        # Wait for completion
+        result = await task
 
-# asyncio.run(demonstrate_task_states())
+        # Check state after completion
+        print("\nAfter awaiting/completion:")
+        print(f"Done: {task.done()}")
+        print(f"Result: {task.result()}")
+        print(
+            f"result(= await task) is same as task.result(): {result is task.result()}"
+        )  # True
 
+        # Task with exception
+        print("\n--- Task with Exception  [task.exception()] ---")
+        failing_task = asyncio.create_task(failing_operation(), name="FailingTask")
 
-# # ------------------------------------------------------------------------------
-# # 4.2 Cancelling Tasks
-# # ------------------------------------------------------------------------------
+        try:
+            await failing_task
+        except ValueError as e:
+            print(f"Task raised exception: {e}")
+            print(f"Exception: {failing_task.exception()}")
 
-# print_subsection("4.2 Cancelling Tasks")
+    await demonstrate_task_states()
 
+    # ------------------------------------------------------------------------------
+    # 4.2 Cancelling Tasks
+    # ------------------------------------------------------------------------------
 
-# async def cancellable_task(name: str):
-#     """A task that can be cancelled."""
-#     try:
-#         print(f"{name}: Starting long operation...")
-#         for i in range(10):
-#             print(f"{name}: Step {i + 1}/10")
-#             await asyncio.sleep(0.5)
-#         print(f"{name}: Completed successfully")
-#         return f"{name} result"
-#     except asyncio.CancelledError:
-#         print(f"{name}: Task was cancelled! Cleaning up...")
-#         # Perform cleanup here
-#         raise  # Re-raise to properly cancel
+    print_subsection("4.2 Cancelling Tasks - [task.cancel()]")
 
+    async def custom_sleep(delay: float, step: int):
+        print(f"step-{step}: before awaiting sleep {delay} block")
+        await asyncio.sleep(delay)  # ✔️ suspension point
+        print(f"step-{step}: after awaiting sleep {delay} block")
 
-# async def cancel_demo():
-#     """Demonstrate task cancellation."""
+    async def cancellable_task(name: str):
+        """A task that can be cancelled."""
+        try:
+            print(f"{name}: Starting long operation...")
+            for i in range(10):
+                print(f"{name}: Step {i + 1}/10")
+                await custom_sleep(
+                    0.5, i + 1
+                )  # ❌ no suspension here (suspends occurs inside)
+            print(f"{name}: Completed successfully")
+            return f"{name} result"
+        except asyncio.CancelledError:
+            print(f"{name}: Task was cancelled! Cleaning up...")
+            # Perform cleanup here
+            raise  # Re-raise to properly cancel
 
-#     # Create a task
-#     task = asyncio.create_task(cancellable_task("Worker"))
+    async def cancel_demo():
+        """Demonstrate task cancellation."""
 
-#     # Let it run for a bit
-#     await asyncio.sleep(1.5)
+        # Create a task
+        task = asyncio.create_task(cancellable_task("Worker"))
 
-#     # Cancel the task
-#     print("\n>>> Cancelling task...")
-#     task.cancel()
+        # Let it run for a bit
+        await asyncio.sleep(1.5)
 
-#     # Wait for cancellation to complete
-#     try:
-#         await task
-#     except asyncio.CancelledError:
-#         print("Task cancellation confirmed")
+        # Cancel the task
+        print("\n>>> Cancelling task...")
+        task.cancel()
+        # step 1: task.cancel() → marks the Task as "cancelled" (no immediate stop)
+        # step 2: cancellation is delivered at the NEXT *suspending* await
+        #         (not every syntactic await, only where the task actually pauses)
+        #         e.g. sleep → asyncio.sleep()
+        #              io    → reader.read()
+        #              task  → await some_task
+        #              future→ await future
+        #              lock  → lock.acquire()
+        #              queue → queue.get()
+        #              sync  → await coroutine()  # suspends only at inner await
+        #         (cancellation hits the active suspension point, not function boundaries)
+        #         (may be nested, but always within the same task)
+        #         (CPU work runs until the next await)
+        # step 3: await task → raises asyncio.CancelledError
 
-#     print(f"Task done: {task.done()}")
-#     print(f"Task cancelled: {task.cancelled()}")
+        try:
+            # Wait for cancellation to complete
+            await task
+        except asyncio.CancelledError:
+            print("Task cancellation confirmed")
 
+        print(f"Task done: {task.done()}")
+        print(f"Task cancelled: {task.cancelled()}")
 
-# asyncio.run(cancel_demo())
+    await cancel_demo()
 
+    # ------------------------------------------------------------------------------
+    # 4.3 Cancellation with Custom Message (Python 3.9+)
+    # ------------------------------------------------------------------------------
 
-# # ------------------------------------------------------------------------------
-# # 4.3 Cancellation with Custom Message (Python 3.9+)
-# # ------------------------------------------------------------------------------
+    print_subsection("4.3 Cancellation with Custom Message - [task.cancel(msg)]")
 
-# print_subsection("4.3 Cancellation with Custom Message (Python 3.9+)")
+    async def cancel_with_message():
+        """Demonstrate cancellation with a custom message."""
 
+        async def worker():
+            try:
+                await asyncio.sleep(10)
+            except asyncio.CancelledError as e:
+                print(f"Cancelled with message: {e.args}")
+                raise
 
-# async def cancel_with_message():
-#     """Demonstrate cancellation with a custom message."""
+        task = asyncio.create_task(worker())
+        await asyncio.sleep(0.1)
 
-#     async def worker():
-#         try:
-#             await asyncio.sleep(10)
-#         except asyncio.CancelledError as e:
-#             print(f"Cancelled with message: {e.args}")
-#             raise
+        # Cancel with a custom message
+        task.cancel("Timeout exceeded")
 
-#     task = asyncio.create_task(worker())
-#     await asyncio.sleep(0.1)
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
-#     # Cancel with a custom message
-#     task.cancel("Timeout exceeded")
+    await cancel_with_message()
 
-#     try:
-#         await task
-#     except asyncio.CancelledError:
-#         pass
+    # ------------------------------------------------------------------------------
+    # 4.4 Shielding Tasks from Cancellation - [asyncio.shield()]
+    # ------------------------------------------------------------------------------
 
+    print_subsection("4.4 Shielding Tasks from Cancellation - [asyncio.shield()]")
 
-# asyncio.run(cancel_with_message())
+    async def shield_demo():
+        """Demonstrate shielding a task from cancellation."""
+        """Shield protects inner task from cancellation"""
 
+        async def critical_operation():
+            """An operation that should complete even if outer task is cancelled."""
+            print("[CRITICAL]: Entered")
+            await asyncio.sleep(1)
+            print("[CRITICAL]: Completed!")
+            return "[CRITICAL] result"
 
-# # ------------------------------------------------------------------------------
-# # 4.4 Shielding Tasks from Cancellation
-# # ------------------------------------------------------------------------------
+        async def outer_task_critical_coroutine_obj(prevent_schedule=True):
+            """Outer task that shields the critical operation."""
+            try:
+                if prevent_schedule:
+                    # """ delaying sufficient enough to make sure
+                    # cancel() is called before it is scheduled
+                    # Now shielded task won't run"""
 
-# print_subsection("4.4 Shielding Tasks from Cancellation")
+                    print(
+                        "[OUTER_TASK]: Before sleeping... (observe 'after sleeping' wont get printed)"
+                    )
+                    await asyncio.sleep(1)  #  cancel arrives here
+                    print(
+                        "[OUTER_TASK]: After sleeping"
+                    )  # wont get printed, and go to catch block
 
+                result = await asyncio.shield(critical_operation())
+                # """
+                # if this line is reached before cancel() is called -> means scheduled ✔️
+                #   then shielded task will run to complete,
+                # else
+                #   it will never run
+                # """
+                return result
+            except asyncio.CancelledError:
+                print(
+                    "[OUTER_TASK]: Outer task cancelled, but critical operation continues if already scheduled..."
+                )
+                raise
 
-# async def shield_demo():
-#     """Demonstrate shielding a task from cancellation."""
+        async def outer_task_critical_task():
+            """Outer task that shields the critical operation."""
+            try:
+                critical_task = asyncio.create_task(critical_operation())
+                print(
+                    "[OUTER_TASK]: critical task is scheduled, so it will run to completion..."
+                )
 
-#     async def critical_operation():
-#         """An operation that should complete even if outer task is cancelled."""
-#         print("Critical: Starting...")
-#         await asyncio.sleep(1)
-#         print("Critical: Completed!")
-#         return "Critical result"
+                print("[OUTER_TASK]: Before sleeping")
+                await asyncio.sleep(1)  #  cancel arrives here
+                print(
+                    "[OUTER_TASK]: After sleeping"
+                )  # wont get printed, and go to catch block
 
-#     async def outer_task():
-#         """Outer task that shields the critical operation."""
-#         try:
-#             # Shield protects inner task from cancellation
-#             result = await asyncio.shield(critical_operation())
-#             return result
-#         except asyncio.CancelledError:
-#             print("Outer task cancelled, but critical operation continues...")
-#             raise
+                result = await asyncio.shield(critical_task)
+                # but this will run to completion as it is already scheduled
 
-#     task = asyncio.create_task(outer_task())
+                return result  # code won't reach here
+            except asyncio.CancelledError:
+                print(
+                    "[OUTER_TASK]: Outer task cancelled, but critical operation continues..."
+                )
+                raise
 
-#     # Try to cancel quickly
-#     await asyncio.sleep(0.3)
-#     task.cancel()
+        async def run_example(input):
+            task = asyncio.create_task(input)
 
-#     try:
-#         result = await task
-#         print(f"Result: {result}")
-#     except asyncio.CancelledError:
-#         print("Task was cancelled")
-#         # Give time for shielded task to complete
-#         await asyncio.sleep(1)
+            # Try to cancel quickly
+            await asyncio.sleep(0.3)
+            task.cancel()
 
+            try:
+                result = await task
+                print(f"[MAIN]: Result: {result}")
+            except asyncio.CancelledError:
+                print("[MAIN]: Task was cancelled")
+                # Give time for shielded task to complete
+                await asyncio.sleep(1)
 
-# asyncio.run(shield_demo())
+        print("\n--- Shielding COROUTINE obj (LET IT SCHEDULE) ---")
+        await run_example(outer_task_critical_coroutine_obj(prevent_schedule=False))
+
+        print("\n--- Shielding COROUTINE obj (PREVENT SCHEDULE) ---")
+        await run_example(outer_task_critical_coroutine_obj(prevent_schedule=True))
+
+        print("\n--- Shielding TASK (`asyncio.create_task` will schedule itself) ---")
+        await run_example(outer_task_critical_task())
+
+    await shield_demo()
 
 
 # ================================================================================
@@ -687,13 +759,13 @@ async def _5_gather_coroutines():
 
         start = time.perf_counter()
 
-        # Gather runs all coroutines concurrently (in any order)
-        # and returns results in order
+        # All coroutines are Scheduled and Run to completion concurrently
+        # and results are returned in order
         results = await asyncio.gather(
             fetch_url("https://api.example.com/users", 1.0),
             fetch_url("https://api.example.com/posts", 0.5),
             fetch_url("https://api.example.com/comments", 1.5),
-            # return_exceptions=False (default False but always recommended to set True)
+            # return_exceptions=False (default `False` but always recommended to set `True` for better error handling)
         )
 
         elapsed = time.perf_counter() - start
@@ -702,8 +774,6 @@ async def _5_gather_coroutines():
         print("Coroutines Results:")
         for result in results:
             print(f"  - {result}")
-
-        return results
 
     await gather_couroutines()
 
@@ -714,7 +784,8 @@ async def _5_gather_coroutines():
 
         start = time.perf_counter()
 
-        # Gather runs all coroutines concurrently (in any order)
+        # All tasks are already Scheduled
+        # `await gather` ==> Runs to completion concurrently
         # and returns results in order
         results = await asyncio.gather(
             asyncio.create_task(fetch_url("https://api.example.com/users", 1.0)),
@@ -788,202 +859,223 @@ async def _5_gather_coroutines():
 
     await gather_exception_handling()
 
-    # # ------------------------------------------------------------------------------
-    # # 5.3 Nested Gather
-    # # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
+    # 5.3 Nested Gather
+    # ------------------------------------------------------------------------------
 
-    # print_subsection("5.3 Nested Gather")
+    print_subsection("5.3 Nested Gather")
 
-    # async def nested_gather():
-    #     """Demonstrate nested gather calls."""
+    async def nested_gather():
+        """Demonstrate nested gather calls."""
 
-    #     async def api_call(endpoint: str) -> str:
-    #         await asyncio.sleep(random.uniform(0.1, 0.5))
-    #         return f"Data from {endpoint}"
+        async def api_call(endpoint: str) -> str:
+            await asyncio.sleep(random.uniform(0.1, 0.5))
+            return f"Data from {endpoint}"
 
-    #     # Fetch user data and posts concurrently
-    #     async def get_user_data(user_id: int):
-    #         results = await asyncio.gather(
-    #             api_call(f"/users/{user_id}"),
-    #             api_call(f"/users/{user_id}/profile"),
-    #             api_call(f"/users/{user_id}/settings"),
-    #         )
-    #         return {"user_id": user_id, "data": results}
+        # Fetch user data and posts concurrently
+        async def get_user_data(user_id: int):
+            results = await asyncio.gather(
+                api_call(f"/users/{user_id}"),
+                api_call(f"/users/{user_id}/profile"),
+                api_call(f"/users/{user_id}/settings"),
+            )
+            return {"user_id": user_id, "data": results}
 
-    #     # Fetch data for multiple users concurrently
-    #     all_user_data = await asyncio.gather(
-    #         get_user_data(1),
-    #         get_user_data(2),
-    #         get_user_data(3),
-    #     )
+        # Fetch data for multiple users concurrently
+        all_user_data = await asyncio.gather(
+            get_user_data(1),
+            get_user_data(2),
+            get_user_data(3),
+        )
 
-    #     for user_data in all_user_data:
-    #         print(f"User {user_data['user_id']}: {user_data['data']}")
+        for user_data in all_user_data:
+            print(f"User {user_data['user_id']}: {user_data['data']}")
 
-    # asyncio.run(nested_gather())
-
-
-# # ================================================================================
-# # SECTION 6: WAITING FOR TASKS - asyncio.wait(), wait_for()
-# # ================================================================================
-
-# separator("6. WAITING FOR TASKS - asyncio.wait(), wait_for()")
-
-# # ------------------------------------------------------------------------------
-# # 6.1 asyncio.wait() - Flexible Waiting
-# # ------------------------------------------------------------------------------
-
-# print_subsection("6.1 asyncio.wait() - Flexible Waiting")
+    await nested_gather()
 
 
-# async def worker_task(name: str, duration: float) -> str:
-#     """A worker task that takes some time."""
-#     await asyncio.sleep(duration)
-#     return f"{name} completed in {duration}s"
+# ================================================================================
+# SECTION 6: WAITING FOR TASKS - asyncio.wait(), wait_for()
+# ================================================================================
 
 
-# async def wait_demo():
-#     """Demonstrate asyncio.wait() with different options."""
+async def _6_waiting_for_tasks():
+    separator("6. WAITING FOR TASKS - asyncio.wait(), wait_for()")
 
-#     # Create tasks
-#     tasks = [
-#         asyncio.create_task(worker_task("Task-A", 1.0), name="Task-A"),
-#         asyncio.create_task(worker_task("Task-B", 0.5), name="Task-B"),
-#         asyncio.create_task(worker_task("Task-C", 1.5), name="Task-C"),
-#         asyncio.create_task(worker_task("Task-D", 0.3), name="Task-D"),
-#     ]
+    # ------------------------------------------------------------------------------
+    # 6.1 asyncio.wait() - Flexible Waiting
+    # ------------------------------------------------------------------------------
 
-#     # Wait for ALL tasks to complete (default)
-#     print("1. WAIT_ALL_COMPLETED:")
-#     done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
-#     print(f"   Done: {len(done)}, Pending: {len(pending)}")
-#     for task in done:
-#         print(f"   - {task.get_name()}: {task.result()}")
+    print_subsection("6.1 asyncio.wait() - Flexible Waiting")
 
+    async def worker_task(name: str, duration: float) -> str:
+        """A worker task that takes some time."""
+        await asyncio.sleep(duration)
+        return f"{name} completed in {duration}s"
 
-# async def wait_first_completed():
-#     """Wait for the first task to complete."""
-#     tasks = [
-#         asyncio.create_task(worker_task("Fast", 0.3), name="Fast"),
-#         asyncio.create_task(worker_task("Medium", 0.6), name="Medium"),
-#         asyncio.create_task(worker_task("Slow", 1.0), name="Slow"),
-#     ]
+    async def wait_demo():
+        """Demonstrate asyncio.wait() with different options."""
 
-#     print("\n2. FIRST_COMPLETED:")
-#     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        # Create tasks
+        tasks = [
+            asyncio.create_task(worker_task("Task-A", 1.0), name="Task-A"),
+            asyncio.create_task(worker_task("Task-B", 0.5), name="Task-B"),
+            asyncio.create_task(worker_task("Task-C", 1.5), name="Task-C"),
+            asyncio.create_task(worker_task("Task-D", 0.3), name="Task-D"),
+        ]
 
-#     print(f"   First completed: {[t.get_name() for t in done]}")
-#     print(f"   Still pending: {[t.get_name() for t in pending]}")
+        # Wait for ALL tasks to complete (default)
+        print("1. WAIT_ALL_COMPLETED:")
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+        print(f"   Done: {len(done)}, Pending: {len(pending)}")
+        for task in done:
+            print(f"   - {task.get_name()}: {task.result()}")
 
-#     # Cancel pending tasks
-#     for task in pending:
-#         task.cancel()
+    async def wait_first_completed():
+        """Wait for the first task to complete."""
+        tasks = [
+            asyncio.create_task(worker_task("Fast", 0.3), name="Fast"),
+            asyncio.create_task(worker_task("Medium", 0.6), name="Medium"),
+            asyncio.create_task(worker_task("Slow", 1.0), name="Slow"),
+        ]
 
+        print("\n2. FIRST_COMPLETED:")
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        print(f"   Done: {len(done)}, Pending: {len(pending)}")
+        print(f"   First completed: {[t.get_name() for t in done]}")
+        print(f"   Still pending: {[t.get_name() for t in pending]}")
 
-# async def wait_first_exception():
-#     """Wait for the first exception or all to complete."""
+        for task in pending:
+            task_name = task.get_name()
 
-#     async def may_raise(name: str, delay: float, should_raise: bool):
-#         await asyncio.sleep(delay)
-#         if should_raise:
-#             raise ValueError(f"{name} error!")
-#         return f"{name} OK"
+            # Request cancellation
+            cancel_accepted = task.cancel()
 
-#     tasks = [
-#         asyncio.create_task(may_raise("T1", 1.0, False)),
-#         asyncio.create_task(may_raise("T2", 0.5, True)),  # Will raise
-#         asyncio.create_task(may_raise("T3", 0.3, False)),
-#     ]
+            # Immediate state (before await)
+            print(f"   [{task_name}] Immediate Results:")
+            print(f"       cancel() returned : {cancel_accepted}")
+            print(f"       cancelled()       : {task.cancelled()}")
+            print(f"       done()            : {task.done()}")
 
-#     print("\n3. FIRST_EXCEPTION:")
-#     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            # Wait for completion
+            print(f"   [{task_name}] Waiting to finish...")
+            try:
+                await task
+                print("       Completed normally")
+                print(f"       done(): {task.done()}")
+            except asyncio.CancelledError:
+                print("       Cancellation complete")
+                print(f"       cancelled(): {task.cancelled()}")
 
-#     for task in done:
-#         if task.exception():
-#             print(f"   Exception in task: {task.exception()}")
-#         else:
-#             print(f"   Completed: {task.result()}")
+            print()  # Empty line between tasks
 
-#     # Cleanup
-#     for task in pending:
-#         task.cancel()
-#         try:
-#             await task
-#         except asyncio.CancelledError:
-#             pass
+    async def wait_first_exception():
+        """Wait for the first exception or all to complete."""
 
+        async def may_raise(name: str, delay: float, should_raise: bool):
+            await asyncio.sleep(delay)
+            if should_raise:
+                raise ValueError(f"{name} error!")
+            return f"{name} OK"
 
-# asyncio.run(wait_demo())
-# asyncio.run(wait_first_completed())
-# asyncio.run(wait_first_exception())
+        tasks = [
+            asyncio.create_task(may_raise("T1", 1.0, False), name="T1"),
+            asyncio.create_task(may_raise("T2", 0.5, True), name="T2"),  # Will raise
+            asyncio.create_task(may_raise("T3", 0.3, False), name="T3"),
+        ]
 
+        print("\n3. FIRST_EXCEPTION:")
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
 
-# # ------------------------------------------------------------------------------
-# # 6.2 asyncio.wait_for() - Timeout on Single Awaitable
-# # ------------------------------------------------------------------------------
+        # Handle completed tasks
+        print(f"   Done: {len(done)}, Pending: {len(pending)}")
+        print()
 
-# print_subsection("6.2 asyncio.wait_for() - Timeout on Single Awaitable")
+        print("   === Completed Tasks ===")
+        for task in done:
+            task_name = task.get_name()
+            if task.exception():
+                print(f"   [{task_name}] Exception: {task.exception()}")
+            else:
+                print(f"   [{task_name}] Result: {task.result()}")
 
+        # Cleanup pending tasks
+        print()
+        print("   === Cleaning Up Pending Tasks ===")
+        for task in pending:
+            task_name = task.get_name()
+            task.cancel()
+            try:
+                await task
+                print(f"   [{task_name}] Completed normally")
+            except asyncio.CancelledError:
+                print(f"   [{task_name}] Cancelled")
 
-# async def wait_for_demo():
-#     """Demonstrate wait_for with timeout."""
+    await wait_demo()
+    await wait_first_completed()
+    await wait_first_exception()
 
-#     async def slow_operation():
-#         await asyncio.sleep(5)
-#         return "Completed!"
+    # ------------------------------------------------------------------------------
+    # 6.2 asyncio.wait_for() - Timeout on Single Awaitable
+    # ------------------------------------------------------------------------------
 
-#     # Wait with timeout
-#     print("Waiting for slow operation with 1 second timeout...")
+    print_subsection("6.2 asyncio.wait_for() - Timeout on Single Awaitable")
 
-#     try:
-#         result = await asyncio.wait_for(slow_operation(), timeout=1.0)
-#         print(f"Result: {result}")
-#     except asyncio.TimeoutError:
-#         print("Operation timed out!")
+    async def wait_for_demo():
+        """Demonstrate wait_for with timeout."""
 
-#     # Successful wait
-#     async def fast_operation():
-#         await asyncio.sleep(0.3)
-#         return "Fast result!"
+        async def slow_operation():
+            await asyncio.sleep(5)
+            return "Completed!"
 
-#     print("\nWaiting for fast operation with 1 second timeout...")
-#     result = await asyncio.wait_for(fast_operation(), timeout=1.0)
-#     print(f"Result: {result}")
+        # Wait with timeout
+        print("Waiting for slow operation with 1 second timeout...")
 
+        try:
+            result = await asyncio.wait_for(slow_operation(), timeout=1.0)
+            print(f"Result: {result}")
+        except asyncio.TimeoutError:
+            print("Operation timed out!")
 
-# asyncio.run(wait_for_demo())
+        # Successful wait
+        async def fast_operation():
+            await asyncio.sleep(0.3)
+            return "Fast result!"
 
+        print("\nWaiting for fast operation with 1 second timeout...")
+        result = await asyncio.wait_for(fast_operation(), timeout=1.0)
+        print(f"Result: {result}")
 
-# # ------------------------------------------------------------------------------
-# # 6.3 as_completed() - Process Results as They Complete
-# # ------------------------------------------------------------------------------
+    await wait_for_demo()
 
-# print_subsection("6.3 as_completed() - Process Results as They Complete")
+    # ------------------------------------------------------------------------------
+    # 6.3 as_completed() - Process Results as They Complete
+    # ------------------------------------------------------------------------------
 
+    print_subsection("6.3 as_completed() - Process Results as They Complete")
 
-# async def as_completed_demo():
-#     """Process tasks as they complete, not in order."""
+    async def as_completed_demo():
+        """Process tasks as they complete, not in order."""
 
-#     async def fetch_with_delay(url: str, delay: float):
-#         await asyncio.sleep(delay)
-#         return f"Fetched {url} in {delay}s"
+        async def fetch_with_delay(url: str, delay: float):
+            await asyncio.sleep(delay)
+            return f"Fetched {url} in {delay}s"
 
-#     tasks = [
-#         fetch_with_delay("url1", 1.5),
-#         fetch_with_delay("url2", 0.3),
-#         fetch_with_delay("url3", 0.8),
-#         fetch_with_delay("url4", 0.5),
-#     ]
+        tasks = [
+            fetch_with_delay("url1", 1.5), # yielded last
+            fetch_with_delay("url2", 0.3), # yielded first
+            fetch_with_delay("url3", 0.8), # yielded third
+            fetch_with_delay("url4", 0.5), # yielded second
+        ]
 
-#     print("Processing results as they complete:")
+        print("Processing results as they complete:")
 
-#     # as_completed yields futures as they complete
-#     for i, coro in enumerate(asyncio.as_completed(tasks)):
-#         result = await coro
-#         print(f"  {i + 1}. {result}")
+        # as_completed yields futures as they complete
+        for i, coro in enumerate(asyncio.as_completed(tasks)):
+            result = await coro
+            print(f"  {i + 1}. {result}")
 
-
-# asyncio.run(as_completed_demo())
+    await as_completed_demo()
 
 
 # # ================================================================================
@@ -1844,7 +1936,7 @@ async def _13_running_blocking_sync_code_in_async_context():
         )
 
         # """use below for custom"""
-        # with ThreadPoolExecutor(max_workers=2) as pool:
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         #     results = await asyncio.gather(
         #         loop.run_in_executor(pool, blocking_io_operation, "Task-1", 1),
         #         loop.run_in_executor(pool, blocking_io_operation, "Task-2", 1),
@@ -2285,7 +2377,7 @@ async def _17_taskgroups():
             task1 = tg.create_task(worker("A", 0.5))
             task2 = tg.create_task(worker("B", 0.3))
             task3 = tg.create_task(worker("C", 0.4))
-            # can also write like `results = [tg.create_task(...), ...]`
+            # or can also write like `results = [tg.create_task(...), ...]`
 
         # All tasks are guaranteed to be complete here
         print(f"Results: {task1.result()}, {task2.result()}, {task3.result()}")
@@ -2304,6 +2396,12 @@ async def _17_taskgroups():
             return f"{name} OK"
 
         try:
+            # on the first failure, cancells all the other tasks
+            # raises an exception group cointaining all the exceptions from failed tasks
+            #     (Including exception from cancelled tasks as well)
+            # No option to keep running other tasks after one fails
+            # Hence we use this when we want all our tasks to run successfully
+            #     yaani either success togather or fail togather
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(may_fail("A", False))
                 tg.create_task(may_fail("B", True))  # Will fail
@@ -2948,12 +3046,14 @@ async def _17_taskgroups():
 
 
 async def main():
-    # _1_introduction_to_asyncio()
-    # await _2_basic_concepts()
-    # await _3_running_coroutines()
-    # await _5_gather_coroutines()
-    # await _8_sleep_comparison()
-    # await _13_running_blocking_sync_code_in_async_context()
+    _1_introduction_to_asyncio()
+    await _2_basic_concepts()
+    await _3_running_coroutines()
+    await _4_tasks_creating_and_managing_tasks()
+    await _5_gather_coroutines()
+    await _6_waiting_for_tasks()
+    await _8_sleep_comparison()
+    await _13_running_blocking_sync_code_in_async_context()
     await _17_taskgroups()
 
 
