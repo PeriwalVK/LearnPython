@@ -4,7 +4,7 @@ import threading
 import time
 import random
 import queue
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Executor, ThreadPoolExecutor, as_completed
 from typing import List, override
 
 
@@ -355,8 +355,6 @@ def section_6_race_conditions():
     """
     Race conditions occur when multiple threads access shared data
     simultaneously, leading to unpredictable results.
-
-    THIS IS THE PROBLEM WE NEED TO SOLVE!
     """
 
     print("  Race condition: When threads compete to modify shared data")
@@ -523,21 +521,43 @@ def section_7_lock():
 @announce("SECTION 8: THREAD SYNCHRONIZATION - RLOCK (REENTRANT LOCK)")
 def section_8_rlock():
     """
-    RLock (Reentrant Lock) can be acquired multiple times by the SAME thread.
-    Regular Lock would cause deadlock if same thread tries to acquire twice.
+    A regular Lock can cause a deadlock if the SAME thread tries to acquire it
+    more than once.
 
-    Internally, an RLock tracks two things:
-        The Owner: The ID of the thread that currently holds the lock.
-        The Recursion Level: A counter indicating how many times the owner has acquired the lock.
+    An RLock (Reentrant Lock) allows the SAME thread to acquire the lock
+    multiple times safely.
+
+    Internally, an RLock tracks:
+        - The owner thread (the thread currently holding the lock)
+        - The recursion depth (how many times the owner has acquired it)
 
     Use RLock when:
-        - nested function calls that need the lock
-        - Recursive functions that need synchronization
+        - Nested function calls need the same lock
+        - Recursive functions require synchronization
+
+    RLock (Reentrant Lock) behavior:
+        - Internal state: (owner_thread, depth)
+        - acquire():
+            * If called by the owner → depth += 1
+            * If called by another thread → block
+        - release():
+            * depth -= 1
+            * When depth == 0 → lock is fully released
+
+    Example:
+        acquire() → depth = 1
+        acquire() → depth = 2
+        acquire() → depth = 3
+        release() → depth = 2
+        release() → depth = 1
+        release() → depth = 0 (lock is free)
+
+    RLock prevents self-deadlock when a thread must re-acquire the same lock.
     """
 
     print_subsection("Problem with Regular Lock in Nested Calls")
     print(
-        "  A function holding a regular lock calls another function "
+        "  When A function holding a regular lock calls another function "
         "that also needs the same lock → DEADLOCK!\n"
     )
 
@@ -686,7 +706,7 @@ def section_8_rlock():
 
     print(
         "=>  Reader will never get an intermidiate value\n"
-        "=>  because lock will never allow Reader to acquire while it is acquired by Writer,\n"
+        "=>  because lock will never allow Reader thread to acquire while it is acquired by the Writer thread,\n"
         "=>  RLock allows re-entry only for the SAME thread. Other threads must still wait!"
     )
 
@@ -702,6 +722,8 @@ def section_9_semaphore():
     Semaphore allows a LIMITED number of threads to access a resource.
     Think of it as a counter that allows N threads through.
 
+    (can think just like token system)
+
     Use cases:
     - Connection pooling
     - Rate limiting
@@ -710,6 +732,8 @@ def section_9_semaphore():
 
     print("  Semaphore: Allows N threads to access resource simultaneously")
     print("  Lock is like Semaphore(1)\n")
+
+    # -------------------------- Connection Pool Simulation (max 3 connections) --------------------------
 
     # Simulate a connection pool with max 3 connections
     print_subsection("Connection Pool Simulation (max 3 connections)")
@@ -756,6 +780,8 @@ def section_9_semaphore():
 
     print("\n  ✓ All threads completed using only 3 concurrent connections!")
 
+    # ------------------ Connection Pool Simulation (max 3 connections) - Class version ------------------
+
     # Simulate a connection pool with max 3 connections- Class Version
     print_subsection("Connection Pool Simulation (max 3 connections) - Class version")
 
@@ -773,7 +799,7 @@ def section_9_semaphore():
                     f"{self._connection_pool._value} more connections available..."
                 )
 
-        def release_connection(self):
+        def _release_connection(self):
             print(f"  {threading.current_thread().name}: Done, releasing connection")
             self._connection_pool.release()
             with mutex:
@@ -787,7 +813,7 @@ def section_9_semaphore():
 
             self._acquire_connection()
             time.sleep(random.uniform(0.5, 1.5))  # Simulate work
-            self.release_connection()
+            self._release_connection()
 
     # Allow max 3 concurrent connections
     connection_pool_obj = ConnectionPool()
@@ -810,6 +836,8 @@ def section_9_semaphore():
         t.join()
 
     print("\n  ✓ All threads completed using only 3 concurrent connections!")
+
+    # ------------------------------------- BoundedSemaphore (Safer) -------------------------------------
 
     # BoundedSemaphore
     print_subsection("BoundedSemaphore (Safer)")
@@ -837,20 +865,18 @@ def section_9_semaphore():
 
 @announce("SECTION 10: THREAD SYNCHRONIZATION - EVENT - [threading.Event()]")
 def section_10_event():
-    """
+    print("""
     Event is a simple signaling mechanism between threads.
     One thread signals an event, other threads wait for it.
 
     Methods:
     - set(): Set the internal flag to True
     - clear(): Reset the internal flag to False
-    - wait(): Block until the flag is True
+    - wait(timeout=None): Block until the flag is True
     - is_set(): Check if the flag is True
-    """
+    """)
 
-    print("  Event: Simple thread signaling mechanism")
-    print("  One thread signals, others wait for the signal\n")
-
+    # ------------------ Server Startup Simulation ------------------
     print_subsection("Server Startup Simulation")
 
     server_ready = threading.Event()
@@ -898,6 +924,7 @@ def section_10_event():
     for t in all_threads:
         t.join()
 
+    # ------------------ Event Reset (clear) ------------------
     # Reset example
     print_subsection("Event Reset (clear)")
 
@@ -932,6 +959,7 @@ def section_11_condition():
     print("  Condition: Wait for complex conditions to become true")
     print("  More powerful than Event for producer-consumer patterns\n")
 
+    # ------------------ Producer-Consumer with Condition ------------------
     print_subsection("Producer-Consumer with Condition")
 
     buffer = []
@@ -950,7 +978,7 @@ def section_11_condition():
         curr_thread_name = threading.current_thread().name
         for i in range(each_produces):
             print(f"  [{curr_thread_name}]({i}): waiting for lock...")
-            with condition:
+            with condition:  # acquiring the CONDITION’S LOCK.
                 # Wait while buffer is full
                 while len(buffer) >= MAX_SIZE:
                     print(f"  [{curr_thread_name}]({i}): Buffer full, waiting...")
@@ -1016,6 +1044,7 @@ def section_11_condition():
 
     print("\n  ✓ All items produced and consumed!")
 
+    # ------------------ Producer-Consumer with Event- [Better with separate conditions] ------------------
     print_subsection("Producer-Consumer with Event- [Better with separate conditions]")
 
     buffer = []
@@ -1030,12 +1059,12 @@ def section_11_condition():
     _common_mutex = threading.Lock()
     not_full = threading.Condition(_common_mutex)
     not_empty = threading.Condition(_common_mutex)
-
     # Had to pass a common lock/mutex here bcz:
     #   1. otherwise each condition will use its own internal lock
     #       and then one condition won't be able to call other's notify method
     #       bcz Can't call notify() on a condition whose lock you don't hold
     #   2. both the Producer and the Consumer need to modify the exact same resource (the buffer list).
+
     def producer():
         """Produce items when buffer has space."""
         nonlocal _item_id
@@ -1369,6 +1398,7 @@ def section_15_queue():
     print("  queue.Queue is thread-safe - no external locks needed!")
     print("  Built-in blocking for full/empty conditions\n")
 
+    # ------------------------------------ Producer-Consumer Pattern ------------------------------------
     print_subsection("Producer-Consumer Pattern")
 
     work_queue = queue.Queue(maxsize=5)
@@ -1411,6 +1441,8 @@ def section_15_queue():
 
     for t in producers + consumers:
         t.join()
+
+    # ------------------------------------ Queue - [queue.Queue(maxsize=0)] ------------------------------------
 
     # Queue methods
     print_subsection("Queue - [queue.Queue(maxsize=0)]")
@@ -1455,8 +1487,17 @@ def section_15_queue():
     item = q.get()
     print(f"  get() returned: {item}")
 
+    # ------------------------------- Stack - [queue.LifoQueue(maxsize=0)] -------------------------------
     # Other queue types
     print_subsection("Stack - [queue.LifoQueue(maxsize=0)]")
+    """
+    **************************
+    Stack: Last In, First Out
+    operations:
+        put(item)
+        get()
+    **************************
+    """
 
     # LIFO Queue (Stack)
     lifo = queue.LifoQueue()
@@ -1467,7 +1508,16 @@ def section_15_queue():
     print("  put 1, 2, 3")
     print(f"  LifoQueue: {lifo.get()}, {lifo.get()}, {lifo.get()}")  # 3, 2, 1
 
+    # -------------------------- Priority Queue - [queue.PriorityQueue(maxsize=0)] ------------------------
     print_subsection("Priority Queue - [queue.PriorityQueue(maxsize=0)]")
+    """
+    ********************************
+    Priority Queue (like a Min Heap)
+    operations:
+        put(item)
+        get()
+    ********************************
+    """
     # Priority Queue
     pq = queue.PriorityQueue()
     # Just like a min heap, gives a minimum item first
@@ -1489,11 +1539,11 @@ def section_15_queue():
 @announce("SECTION 16: THREAD POOL (CONCURRENT.FUTURES)")
 def section_16_thread_pool():
     """
-    ThreadPoolExecutor provides a high-level interface for thread pools.
+    concurrent.futures.ThreadPoolExecutor provides a high-level interface for thread pools.
     Manages thread creation/destruction automatically.
     """
 
-    print("  ThreadPoolExecutor: High-level, managed thread pool")
+    print("  concurrent.futures.ThreadPoolExecutor: High-level, managed thread pool")
     print("  Recommended over raw threading for most use cases\n")
 
     def fetch_url(url):
@@ -1565,12 +1615,135 @@ def section_16_thread_pool():
 
 
 # =============================================================================
-# SECTION 17: COMMON PITFALLS AND BEST PRACTICES
+# SECTION 17: KEY BASED THREADING ASSIGNMENTS (KEY BASED EXECUTORS)
 # =============================================================================
 
 
-@announce("SECTION 17: COMMON PITFALLS AND BEST PRACTICES")
-def section_17_best_practices():
+@announce("SECTION 17: KEY BASED THREADING ASSIGNMENTS (KEY BASED EXECUTORS)")
+def section_17_key_based_threading():
+    """
+    This hack ensures each task is assigned to a specific thread based on a key
+    create multiple ThreadPoolExecutor with a single thread and choose the executor based on the key
+
+    so internally, all tasks submitted to a specific ThreadPoolExecutor are run sequentially,
+    while all threads are parallel executing
+
+    Useful in Cache System LLD
+    """
+
+    def print_num(num: int):
+        time.sleep(1)
+        print(f"[{threading.current_thread().name}]: got num: {num}")
+
+    THREADS_CNT = 5
+    executors = [
+        ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"Executor-{i}")
+        for i in range(THREADS_CNT)
+    ]
+
+    def get_executor_index(key):
+        return key % THREADS_CNT
+
+    total_tasks_cnt = 20
+    future_list = []
+
+    for i in range(total_tasks_cnt):
+        future_list.append(executors[get_executor_index(i)].submit(print_num, i))
+
+    cnt = 0
+    for future in as_completed(future_list):
+        future.result()
+        cnt += 1
+
+    print(f"""Completed {cnt} tasks out of {total_tasks_cnt} tasks""")
+
+    print("Shutting down executors...")
+    for key_based_executor in executors:
+        key_based_executor.shutdown(wait=True)
+
+    print_subsection("Using context manager")
+
+    # Inherit from concurrent.futures.Executor for better compatibility.
+    class MyKeyBasedThreadExecutor(Executor):
+        """
+        Routes tasks to one of N single-threaded executors based on a key.
+
+        Guarantees:
+        - Tasks with the same key execute sequentially
+        - Tasks with different keys may execute in parallel
+        """
+
+        def __init__(self, num_threads: int):
+            self.num_threads = num_threads
+            self.executors: List[ThreadPoolExecutor] = [
+                ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"Executor-{i}")
+                for i in range(num_threads)
+            ]
+            print(f"  -> Created {num_threads} underlying executors.")
+
+            # # Use built-in hash() to support strings, ints, etc.
+            # # abs() is needed because hash() can be negative
+            self.hash = lambda key: abs(hash(key)) % self.num_threads
+            # self.hash = lambda key: key % num_threads
+
+        def _get_executor_index(self, key):
+            return self.hash(key)
+
+        # We modify the signature to accept a 'key', so it knows where to route the task.
+        def submit(self, key, fn, /, *args, **kwargs):
+            """
+            Submit a task associated with a key.
+            Tasks with the same key are executed sequentially.
+            """
+            idx = self._get_executor_index(key)
+            return self.executors[idx].submit(fn, *args, **kwargs)
+
+        def __enter__(self):
+            print("entering context manager...")
+            return self
+
+        # Implement shutdown separately so it can be called manually if not using context manager.
+        def shutdown(self, wait=True, **kwargs):
+            print("  -> Shutting down all inner executors...")
+            for executor in self.executors:
+                executor.shutdown(wait=wait, **kwargs)
+            print("  -> All inner executors successfully shut down.")
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            self.shutdown(wait=True)
+            # return False to ensure all tasks finish, but do not suppress exceptions
+            return False
+
+    THREADS_CNT = 10
+    total_tasks_cnt = 100
+    future_list = []
+
+    with MyKeyBasedThreadExecutor(THREADS_CNT) as key_based_executor:
+        for i in range(total_tasks_cnt):
+            future_list.append(key_based_executor.submit(str(i), print_num, i))
+            # submit(key, fn, *args, **kwargs)
+
+        """
+        shutdown(wait=True) ensures all tasks complete before returning
+        The monitoring loop is just optional progress reporting
+
+        If you want to see real-time progress ⇒ Keep it commented
+        If you want to wait for all tasks to complete before shutdown ⇒ Uncomment
+        """
+        cnt = 0
+        for future in as_completed(future_list):
+            future.result()
+            cnt += 1
+        print(f"""Completed {cnt} tasks out of {total_tasks_cnt} tasks""")
+
+
+# =============================================================================
+# SECTION 18: COMMON PITFALLS AND BEST PRACTICES
+# =============================================================================
+
+
+@announce("SECTION 18: COMMON PITFALLS AND BEST PRACTICES")
+def section_18_best_practices():
     """
     Common pitfalls to avoid and best practices to follow.
     """
@@ -1654,6 +1827,9 @@ def section_17_best_practices():
         - lock.acquire(timeout=5)
         - queue.get(timeout=5)
         - event.wait(timeout=5)
+    
+    10. Always check future.result() or use future.add_done_callback 
+        ==> to ensure your background tasks aren't silently failing.
     """)
 
     # GIL reminder
@@ -1747,7 +1923,8 @@ def main():
         ("Timer Threads", section_14_timer),
         ("Thread-Safe Queue", section_15_queue),
         ("Thread Pool (concurrent.futures)", section_16_thread_pool),
-        ("Best Practices", section_17_best_practices),
+        ("Key Based Threading", section_17_key_based_threading),
+        ("Best Practices", section_18_best_practices),
     ]
 
     print("  Available sections:")
