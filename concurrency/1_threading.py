@@ -4,7 +4,7 @@ import threading
 import time
 import random
 import queue
-from concurrent.futures import Executor, ThreadPoolExecutor, as_completed
+from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
 from typing import List, override
 
 
@@ -1632,7 +1632,7 @@ def section_17_key_based_threading():
     """
 
     def print_num(num: int):
-        time.sleep(1)
+        time.sleep(0.2)
         print(f"[{threading.current_thread().name}]: got num: {num}")
 
     THREADS_CNT = 5
@@ -1645,13 +1645,13 @@ def section_17_key_based_threading():
         return key % THREADS_CNT
 
     total_tasks_cnt = 20
-    future_list = []
+    outer_future_list = []
 
     for i in range(total_tasks_cnt):
-        future_list.append(executors[get_executor_index(i)].submit(print_num, i))
+        outer_future_list.append(executors[get_executor_index(i)].submit(print_num, i))
 
     cnt = 0
-    for future in as_completed(future_list):
+    for future in as_completed(outer_future_list):
         future.result()
         cnt += 1
 
@@ -1661,6 +1661,7 @@ def section_17_key_based_threading():
     for key_based_executor in executors:
         key_based_executor.shutdown(wait=True)
 
+    # -------------------------------------- Using context manager --------------------------------------
     print_subsection("Using context manager")
 
     # Inherit from concurrent.futures.Executor for better compatibility.
@@ -1683,14 +1684,14 @@ def section_17_key_based_threading():
 
             # # Use built-in hash() to support strings, ints, etc.
             # # abs() is needed because hash() can be negative
-            self.hash = lambda key: abs(hash(key)) % self.num_threads
-            # self.hash = lambda key: key % num_threads
+            # self.hash = lambda key: abs(hash(key)) % self.num_threads
+            self.hash = lambda key: key % num_threads
 
         def _get_executor_index(self, key):
             return self.hash(key)
 
         # We modify the signature to accept a 'key', so it knows where to route the task.
-        def submit(self, key, fn, /, *args, **kwargs):
+        def submit(self, key, fn, /, *args, **kwargs) -> Future:
             """
             Submit a task associated with a key.
             Tasks with the same key are executed sequentially.
@@ -1699,7 +1700,7 @@ def section_17_key_based_threading():
             return self.executors[idx].submit(fn, *args, **kwargs)
 
         def __enter__(self):
-            print("entering context manager...")
+            print("  -> Entering context manager...")
             return self
 
         # Implement shutdown separately so it can be called manually if not using context manager.
@@ -1711,16 +1712,17 @@ def section_17_key_based_threading():
 
         def __exit__(self, exc_type, exc_value, traceback):
             self.shutdown(wait=True)
+            print("  -> Exiting context manager...")
             # return False to ensure all tasks finish, but do not suppress exceptions
             return False
 
     THREADS_CNT = 10
     total_tasks_cnt = 100
-    future_list = []
+    outer_future_list = []
 
     with MyKeyBasedThreadExecutor(THREADS_CNT) as key_based_executor:
         for i in range(total_tasks_cnt):
-            future_list.append(key_based_executor.submit(str(i), print_num, i))
+            outer_future_list.append(key_based_executor.submit(i, print_num, i))
             # submit(key, fn, *args, **kwargs)
 
         """
@@ -1731,10 +1733,40 @@ def section_17_key_based_threading():
         If you want to wait for all tasks to complete before shutdown ⇒ Uncomment
         """
         cnt = 0
-        for future in as_completed(future_list):
+        for future in as_completed(outer_future_list):
             future.result()
             cnt += 1
         print(f"""Completed {cnt} tasks out of {total_tasks_cnt} tasks""")
+
+    # -------------------------------------- ex: calling same thread from the thread --------------------------------------
+    print_subsection("ex: calling same thread from the thread")
+    executor = MyKeyBasedThreadExecutor(10)
+
+    def inner_print_num(num: int):
+        # time.sleep(0.2)
+        print(f"[{threading.current_thread().name}]: inner_print_num got num: {num}")
+
+    def call_same_thread_again(num):
+        thread_name = threading.current_thread().name
+        print(
+            f"[{thread_name}]: calling call_same_thread_again({num}) again..."
+        )  # calling
+        # time.sleep(0.1)
+        inner_future = executor.submit(num, inner_print_num, num)
+        return inner_future
+        # return f.result() # will result in a deadlock because it is calling the same function in the same thread again
+
+    outer_future_list = []
+    for i in range(100):
+        # time.sleep(0.05)
+        outer_future_list.append(executor.submit(i, call_same_thread_again, i))
+
+    for outer_future in outer_future_list:
+        inner_future = outer_future.result()
+        inner_future.result()
+
+    print("calling Shutting down of executor...")
+    executor.shutdown(wait=True)
 
 
 # =============================================================================
