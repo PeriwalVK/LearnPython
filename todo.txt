@@ -1,2 +1,0 @@
-1) singleton pattern in python [__new__(cls) wala] 
-2) abstract class me defining_abstract_class_method() ek baar thik se krna hai

@@ -1,0 +1,2 @@
+(1) singleton pattern in python [__new__(cls)] 
+(2) defining_abstract_class_method() in abstract class ->(has to do it properly once)
