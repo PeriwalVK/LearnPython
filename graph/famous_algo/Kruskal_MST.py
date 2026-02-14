@@ -32,6 +32,9 @@ Conclusion:
     Practically → Almost linear for union part
     Formally → O(E alpha(V))
 -----------------------------------------------
+
+suitable for: Sparse graphs
+
 """
 
 from typing import List, Tuple
@@ -119,5 +122,5 @@ edges = [
 n = 1 + max(max(edge[0], edge[1]) for edge in edges)  # vertices: 0, 1, 2, 3, .... n-1
 mst = kruskal(n, edges)
 
-print("MST edges:", mst)
-print("Total weight:", sum(e[2] for e in mst))
+print("[Kruskal]: MST edges:", mst)
+print("[Kruskal]: Total weight:", sum(e[2] for e in mst))
