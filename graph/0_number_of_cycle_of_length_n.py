@@ -38,10 +38,10 @@ def countCycles(graph, n):
     visited = [False] * V
 
     # Searching for cycle by using v-(n-1) vertices count = 0
-    # bcz we start from all cycle thart contains 0,
+    # bcz we start from all cycle that contains 0,
     # then in next iteration we calculate all cycle that includes 1 but not 0
     #
-    # so going on we in final iteration include all cycle which include V-1 - (n-1) vertex
+    # so going on we in final iteration include all cycle which include the vertex `V-1 - (n-1)`` 
     #   and we are left with vertices V-1 - (n-1), V-1 - (n-2), V-1 - (n-3) and so on upto v-1
     #
     # and in next iteration, no sufficient number of vertices are left to query
