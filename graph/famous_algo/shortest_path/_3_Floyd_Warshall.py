@@ -55,6 +55,14 @@ When to Use?
 - Dense graphs (for sparse -> Johnson's Algorithm is better)
 - When we need distance between EVERY pair of nodes
 - When V is small (typically <= 400)
+
+----------------------------------------------------------------------
+| Algorithm            | Negative Edges | Dense Graph | Sparse Graph |
+| -------------------- | -------------- | ----------- | ------------ |
+| Floyd-Warshall       |      ✔         |      ✔✔    |      ❌      |
+| Dijkstra (all nodes) |      ❌        |      ✔     |       ✔      |
+| Johnson              |      ✔         |      ❌    |      ✔✔      |
+----------------------------------------------------------------------
 """
 
 INF = float("inf")
