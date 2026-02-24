@@ -25,8 +25,6 @@ d = number of digits (for radix sort)
 
 # TODO: add proper comments to get a visual feel of what this algo does
 
-import heapq
-
 
 # ============================================================
 # 1. BUBBLE SORT
@@ -257,6 +255,7 @@ def quick_sort(arr):
 
 
 # def heap_sort(arr):
+#     import heapq
 #     arr = arr.copy()
 #     heapq.heapify(arr)  # O(n)
 #     return [heapq.heappop(arr) for _ in range(len(arr))]
@@ -312,13 +311,13 @@ def heap_sort(arr):
 
 
 # ============================================================
-# 7. COUNTING SORT (for non-negative integers)
+# 7. COUNTING SORT
 #
 # Time Complexity: O(n + k)
 # Space: O(k)
 #     where k is the max element present in array
 #
-# Stable: Yes (if implemented carefully)
+# Stable: Yes (if implemented carefully) -> but mine version is Not
 # ============================================================
 def counting_sort(arr):
     """
@@ -332,22 +331,23 @@ def counting_sort(arr):
 
     agar max element bada ho gya to unoptiml because bada loop lgega
     """
-    arr = arr.copy()  # not required
+    # arr = arr.copy()  # not required
 
     if not arr:
         return arr
 
+    min_val = min(arr)
     max_val = max(arr)
-    count = [0] * (max_val + 1)
+    range_size = max_val - min_val + 1
+    count = [0] * range_size
 
     for num in arr:
-        count[num] += 1
+        count[num - min_val] += 1
 
     result = []
     for i, freq in enumerate(count):
         for _ in range(freq):
-            result.append(i)
-        # result.extend([i] * freq)
+            result.append(i + min_val)
 
     return result
 
@@ -361,25 +361,16 @@ def counting_sort(arr):
 # ============================================================
 def counting_sort_by_digit(arr, exp):
     """
-    Put elements into buckets based on range, then sort each bucket.
+    Stable counting sort based on a specific digit (exp).
 
-    Core Idea
+    Used internally by Radix Sort.
 
-    Divide range into buckets
-
-    Sort buckets individually
-
-    Merge
-
-    Deep insight
-    It works best when data is uniformly distributed.
-
-    It believes:
-
-    “If I reduce problem density, sorting becomes easy.”
-
+    Steps:
+    1. Count frequency of digits (0–9)
+    2. Convert count to prefix sum (cumulative positions)
+    3. Traverse from right to left (to maintain stability)
+    4. Build output array
     """
-    arr = arr.copy()
 
     n = len(arr)
     output = [0] * n
@@ -402,6 +393,21 @@ def counting_sort_by_digit(arr, exp):
 
 
 def radix_sort(arr):
+    """
+    Counting sort based on a specific digit (exp).
+
+    Radix Sort Idea:
+    Sort numbers digit by digit starting from least significant digit (LSD).
+
+    At each step:
+    - Use stable counting sort
+    - Preserve relative order from previous digit
+
+    Because counting sort is stable,
+    digits processed earlier remain correctly ordered.
+
+    This is NOT bucket sort.
+    """
     arr = arr.copy()
     if not arr:
         return arr
@@ -433,6 +439,9 @@ def bucket_sort(arr):
     """
     # arr = arr.copy() # not required
 
+    if not arr:
+        return arr
+
     n = len(arr)
 
     min_ = min(arr)
@@ -441,7 +450,7 @@ def bucket_sort(arr):
     if min_ == max_:
         return arr
 
-    max_ += 1  # just to avoid index = n case
+    max_ += 1e-9  # added + 1e-9 to prevent index = n
 
     # create n empty buckets: Each bucket represents a small interval
     buckets = [[] for _ in range(n)]
@@ -452,7 +461,9 @@ def bucket_sort(arr):
 
     sorted_arr = []
     for bucket in buckets:
-        sorted_arr.extend(sorted(bucket))  # using Timsort
+        sorted_arr.extend(sorted(bucket))
+        # using Timsort, so worst case is O(n log n)
+        # is you use insertion sort, worst case is O(n^2)
 
     return sorted_arr
 
@@ -480,8 +491,8 @@ def python_sort(arr):
 # TESTING ALL SORTS
 # ============================================================
 if __name__ == "__main__":
-    sample = [5, 2, 9, 1, 5, 6]
-    # sample = [3, 4, 2, 5, 7, 1, 2, 3, 9, 2]
+    # sample = [5, 2, 9, 1, 5, 6]
+    sample = [3, 4, 2, 5, 7, 1, 2, 3, 9, 2]
 
     print("Original:", sample)
     print("Bubble:", bubble_sort(sample))
