@@ -48,11 +48,15 @@ def _1_basic_date_and_time_objects():
     print("\n2. TIME OBJECTS:")
     current_time = t.localtime()
     dt_current_time = dt.datetime.now().time() 
+    dt_current_timestamp = dt.datetime.now().timestamp() # already UTC by default
+    dt_current_timestamp_utc = dt.datetime.now(dt.UTC).timestamp() 
     specific_time = dt.time(14, 30, 45, 123456)  # 2:30:45.123456 PM
     midnight = dt.time()  # Default: 00:00:00
 
     print(f"current_time: {current_time}")
     print(f"dt_current_time: {dt_current_time}")
+    print(f"dt_current_timestamp: {dt_current_timestamp}")
+    print(f"dt_current_timestamp_utc: {dt_current_timestamp_utc}")
     print(f"Specific time: {specific_time}")
     print(f"Midnight: {midnight}")
     print(
@@ -194,7 +198,7 @@ def _4_timedelta():
     # Age calculation
     birth_date = dt.datetime(1990, 5, 15)
     age = now - birth_date
-    print(f"Age: {age.days} days ({age.days // 365} years)")
+    print(f"Age: {age.days} days ({age.days // 365} years + some days)")
 
     # Next Friday
     days_ahead = 4 - now.weekday()  # Friday is weekday 4
