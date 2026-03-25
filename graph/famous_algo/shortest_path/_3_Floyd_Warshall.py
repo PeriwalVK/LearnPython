@@ -147,6 +147,12 @@ def floyd_warshall(graph):
 
 if __name__ == "__main__":
     # graph = [[0, 3, INF, 7], [8, 0, 2, INF], [5, INF, 0, 1], [2, INF, INF, 0]]
+    # graph = [
+    #     [0, 3, INF, 7],
+    #     [8, 0, 2, INF],
+    #     [5, INF, 0, 1],
+    #     [2, -1, INF, 0]
+    # ]
     graph = [[0, 3, INF, 7], [8, 0, 2, INF], [5, INF, 0, 1], [2, -1, INF, 0]]
 
     floyd_warshall(graph)

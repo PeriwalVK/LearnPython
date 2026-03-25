@@ -77,7 +77,8 @@ def dijkstra(n, graph, source):
         current_dist, node = heapq.heappop(min_heap)
 
         # If we already found a better path, skip
-        # bcz already neighbours have been considered using that better path
+        # bcz heap had already picked it before and processed it
+        # and its neighbours have already been considered using that better path
         if current_dist > distance[node]:
             continue
 
