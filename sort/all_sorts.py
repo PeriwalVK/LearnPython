@@ -321,15 +321,17 @@ def heap_sort(arr):
 # ============================================================
 def counting_sort(arr):
     """
-    "Count instead of compare.”
-    max element nikalo and 0 to max tk ka count record krlo
-    fir 0 to max tk loop krke count times i ko append krte rho result me
-
     “If values are limited, sorting is just counting.”
+    "Count instead of compare.”
+
+    min and max element nikalo
+    then min to max tk ka count record krlo
+    fir min to max tk loop krke [i]*count ko append krte rho result me
 
     This is why it's O(n + k).
-
-    agar max element bada ho gya to unoptiml because bada loop lgega
+    here k is range [min to max]
+    
+    agar range badi ho gyi to unoptiml because bada loop lgega
     """
     # arr = arr.copy()  # not required
 
@@ -427,6 +429,8 @@ def radix_sort(arr):
 # Time Complexity:
 #   Avg: O(n + k)
 #   Worst: O(n^2)
+#         if you use insertion sort, worst case is O(n^2)
+#         but using Timsort, worst case is O(n log n)
 # Space: O(n)
 # ============================================================
 def bucket_sort(arr):
