@@ -19,7 +19,6 @@ def my_generator(n):
 
     # loop until counter is less than n
     while value < n:
-
         # produce the current value of the counter
         print(f"Just before yielding {value}")
         yield value
@@ -59,4 +58,21 @@ Just before yielding 2
 try:
     print(next(gen))
 except Exception as e:
-    e.traceback()
+    print("end achieved")
+    # e.traceback()
+
+
+##################### fibonacci generator #####################
+
+
+def fibonacci_generator():
+    """Generates an infinite sequence of Fibonacci numbers."""
+    a, b = 0, 1
+    while True:
+        yield a  # Return 'a' and pause execution
+        a, b = b, a + b  # Update a and b for the next number
+
+gen = fibonacci_generator()
+
+for i in range(10):
+    print(f"fib[{i}] = {next(gen)}")
