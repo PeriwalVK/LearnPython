@@ -58,6 +58,13 @@ print(my_string[::-1])  # Output: "!dlrow ,olleH"
 ###################################### WORTH WATCHING #######################################
 #############################################################################################
 
+separator("Random worth watch")  # ==================================================
+
+
+x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+print(x[2:8:-2])  # []
+# since it knows it will never stop, so it print nothing (i.e. [])
+
 
 separator("Slicing Tuple")  # ==================================================
 
@@ -66,6 +73,11 @@ colors = ("red", "green", "blue", "yellow", "purple")
 # Get elements from index 1 to 3
 subtuple = colors[1:3]
 print(subtuple)  # Output: ("green", "blue")
+
+
+# colors[1:3] = ("black", "brown")
+# print(colors)
+# # TypeError: 'tuple' object does not support item assignment
 
 
 separator("Modifying Sequences")  # ==================================================
