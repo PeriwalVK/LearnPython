@@ -9,7 +9,7 @@ class Node:
         self.left: Node = None
         self.right: Node = None
 
-    def __str__(self):
+    def __repr__(self):
         return str(self.val)
 
 
@@ -27,7 +27,7 @@ def inorder_recursive(root: Node):
     return arr
 
 
-def inOrder_without_recursion(root: Node):
+def inOrder_without_recursion0(root: Node):
     ans = []
     stack: List[Node] = []
     curr = root
@@ -41,10 +41,33 @@ def inOrder_without_recursion(root: Node):
 
         # encountered left child as None, hence pick self and process
         curr = stack.pop()
-        ans.append(curr.val)
+        ans.append(curr.val)  # visited the self
+        curr = curr.right  #  so now process right subtree similarly
 
-        # we have visited the self, so now process right subtree similarly
-        curr = curr.right
+    return ans
+
+
+def inOrder_without_recursion(root: Node):
+    ans = []
+
+    curr = root
+    stack: List[Node] = []
+
+    while curr:
+        stack.append(curr)
+        curr = curr.left
+
+    while stack:
+        print(f"stack looks like {stack}")
+        curr = stack.pop()
+        ans.append(curr.val)  # visited the self
+        
+        curr = curr.right  #  so now process right subtree similarly
+        while curr:
+            stack.append(curr)
+            curr = curr.left
+
+
 
     return ans
 
