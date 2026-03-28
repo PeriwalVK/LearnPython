@@ -11,7 +11,7 @@ Key Features:
 
 We assume:
     - Vertices are numbered from 0 to V-1
-    - Graph is represented as an edge list
+    - Graph represented as EDGE-LIST
 
 -----------------------------------------
 Time Complexity Discussion
@@ -26,12 +26,20 @@ If:
 Then:
     Time Complexity = O(V * E)
     Space Complexity = O(V)
+
+-----------------------------------------
+What we try to do (in simple language)
+-----------------------------------------
+1) Initialize distance array to infinity
+2) Relax all edges (V - 1) times
+3) Check for negative weight cycles
+
 """
 
 
-def bellman_ford(n, edges, source):
+def bellman_ford(V, edges, source):
     """
-    vertices : int
+    V : int
         Number of vertices (V)
 
     edges : list of tuples
@@ -42,14 +50,14 @@ def bellman_ford(n, edges, source):
     """
 
     # Step 1: Initialize distance array
-    distance = [float("inf")] * n
+    distance = [float("inf")] * V
     distance[source] = 0
 
-    parents = [None] * n
+    parents = [None] * V
 
     # Step 2: Relax all edges (V - 1) times
-    for _ in range(n - 1):
-        _updated = False
+    for _ in range(V - 1):
+        _updated = False  # for early termination of loop
 
         for u, v, weight in edges:
             # if distance[u] + weight < distance[v]:
@@ -71,7 +79,7 @@ def bellman_ford(n, edges, source):
             #   but still a good practice to explicitly check for negative cycles just for safety.
             break
 
-    # Step 3: Detect negative weight cycle by doing the same one more time (i.e. nth time)
+    # Step 3: Detect negative weight cycle by doing the same one more time (i.e. Vth time)
     for u, v, weight in edges:
         # if distance[u] + weight < distance[v]:
         if distance[u] != float("inf") and distance[u] + weight < distance[v]:
@@ -81,20 +89,20 @@ def bellman_ford(n, edges, source):
     ##############################################################################
     # Step 4: Print shortest paths
     print(f"All Shortest paths from {source} are: ")
-    for node in range(n):
+    for node in range(V):
+        if distance[node] == float("inf"):
+            print(f"""DESTINATION: {node}\t UNREACHABLE""")
+            continue
+
         curr_node = node
         curr_path = []
         while curr_node is not None:
             curr_path.append(curr_node)
             curr_node = parents[curr_node]
+
         curr_path.reverse()
-        if distance[node] == float("inf"):
-            print(f"""DESTINATION: {node}\t UNREACHABLE""")
-            continue
-        else:
-            print(
-                f"""DESTINATION: {node}\t LENGTH: {distance[node]}\t PATH: {" -> ".join(str(i) for i in curr_path)}"""
-            )
+        path = " -> ".join(str(i) for i in curr_path)
+        print(f"""DESTINATION: {node}\t LENGTH: {distance[node]}\t PATH: {path}""")
 
     return distance
 

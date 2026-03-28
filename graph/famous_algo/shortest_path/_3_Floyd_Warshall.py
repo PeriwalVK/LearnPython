@@ -56,13 +56,55 @@ When to Use?
 - When we need distance between EVERY pair of nodes
 - When V is small (typically <= 400)
 
-----------------------------------------------------------------------
-| Algorithm            | Negative Edges | Dense Graph | Sparse Graph |
-| -------------------- | -------------- | ----------- | ------------ |
-| Floyd-Warshall       |      ✔         |      ✔✔    |      ❌      |
-| Dijkstra (all nodes) |      ❌        |      ✔     |       ✔      |
-| Johnson              |      ✔         |      ❌    |      ✔✔      |
-----------------------------------------------------------------------
+-----------------------------------------
+What we try to do (in simple language)
+-----------------------------------------
+1) for every vertix as intermediate vertex (k)
+    2) for every vertix as source vertex (i)
+        3) for every vertix as destination vertex (j)
+            # If going through k improves distance between i and j, then update it
+            4) if distance[i][k] != INF and distance[k][j] != INF and distance[i][j] > distance[i][k] + distance[k][j]:
+                distance[i][j] = distance[i][k] + distance[k][j]
+                parents[i][j] = parents[k][j]
+
+
+
+
++=================+====================+=====================+======================+========================+
+| Property        | Dijkstra           | Bellman-Ford        | Floyd-Warshall       | Johnson's Algo         |
+|                 | (all nodes)        |                     |                      |                        |
++=================+====================+=====================+======================+========================+
+| Allows -ve      | ❌                 | ✔                   | ✔                   | ✔                      |
+| Edges           |                    |                     |                      |                        |
++-----------------+--------------------+---------------------+----------------------+------------------------+
+| Detects -ve     | ❌                 | ✔                   | ✔                   | ✔ (via BF)             |
+| Cycles          |                    |                     |                      |                        |
++-----------------+--------------------+---------------------+----------------------+------------------------+
+| Works properly  | ❌                 | ❌                  | ❌                  | ❌                     |
+| for -ve cycles  |                    | (detects only)      | (detects only)       | (fails if cycle exists)|
++=================+====================+=====================+======================+========================+
+| Best Use Case   | Single src         | Single src → all    | All-pairs (APSP)     | Sparse APSP            |
+| (shortest path) | (V times for APSP) | nodes               |                      |                        |
++=================+====================+=====================+======================+========================+
+| Graph Type      | Adj List (heap)    | Edge List           | VxV Matrix           | Adj List + reweight    |
++=================+====================+=====================+======================+========================+
+| Time Complexity | O(V·E log V)       | O(V·E)              | O(V³)                | O(V·E log V)           |
++-----------------+--------------------+---------------------+----------------------+------------------------+
+| Space           | O(V + E)           | O(V)                | O(V²)                | O(V + E)               |
++=================+====================+=====================+======================+========================+
+| Dense Graph     | ✔                  | ❌                  | ✔✔ (best)           | ❌                     |
++-----------------+--------------------+---------------------+----------------------+------------------------+
+| Sparse Graph    | ✔✔                 | ✔✔                 | ❌                   | ✔✔ (best)             |
++=================+====================+=====================+======================+========================+
+| Avoid When      | -ve weights        | Large dense graphs  | Large sparse graphs  | Dense graphs           |
++=================+====================+=====================+======================+========================+
+| Algo Type       | Greedy             | DP                  | DP                   | Hybrid (BF + Dijkstra) |
++=================+====================+=====================+======================+========================+
+| Relaxation      | Priority queue     | Repeated relaxation | DP via intermediates | Reweight + Dijkstra    |
++=================+====================+=====================+======================+========================+
+
+
+
 """
 
 INF = float("inf")
@@ -84,18 +126,19 @@ def floyd_warshall(graph):
         [None if graph[i][j] == INF or i == j else i for j in range(n)]
         for i in range(n)
     ]
+    # parents[i][j] stores predecessor of j in shortest path from i to j
 
     # Step 1: Pick every vertex as intermediate vertex
-    for i in range(n):
+    for k in range(n):
         # Step 2: Pick every source vertex
         for i in range(n):
             # Step 3: Pick every destination vertex
             for j in range(n):
                 # If going through k improves distance, update it
                 # if distance[i][k] != INF and distance[k][j] != INF and distance[i][j] > distance[i][k] + distance[k][j]:
-                if distance[i][j] > distance[i][i] + distance[i][j]:
-                    distance[i][j] = distance[i][i] + distance[i][j]
-                    parents[i][j] = parents[i][j]
+                if distance[i][j] > distance[i][k] + distance[k][j]:
+                    distance[i][j] = distance[i][k] + distance[k][j]
+                    parents[i][j] = parents[k][j]
                     # Since shortest path i->j now goes through k,
                     # the predecessor of j becomes the predecessor used in k->j.
 
@@ -126,16 +169,17 @@ def floyd_warshall(graph):
             print(f"from {source} to {destination}:\t UNREACHABLE")
             return
 
-        path = []
+        curr_path = []
         curr_node = destination
         while curr_node is not None:
-            path.append(curr_node)
+            curr_path.append(curr_node)
             curr_node = parents[source][curr_node]
-        path.reverse()
+
+        curr_path.reverse()
+        path = " -> ".join(str(i) for i in curr_path)
         print(
-            f"from {source} to {destination}:\t LENGTH: {distance[source][destination]},\t PATH: {' -> '.join(str(node) for node in path)}"
+            f"from {source} to {destination}:\t LENGTH: {distance[source][destination]},\t PATH: {path}"
         )
-        return path
 
     for src in range(n):
         for dst in range(n):

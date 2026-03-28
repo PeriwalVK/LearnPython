@@ -10,6 +10,7 @@ Works for:
 Time Complexity:
 O(VE + V E log V)
 """
+
 """
 Johnson’s Algorithm
 -------------------
@@ -69,44 +70,9 @@ Space Complexity:
 O(V^2)  → for storing all-pairs result
 O(V + E) → graph storage
 
-------------------------------------------------------------
-When to Use?
-------------------------------------------------------------
-- Sparse graphs
-- Graph has negative edges
-- No negative cycle
-- Large V where Floyd-Warshall is too slow
-
-----------------------------------------------------------------------
-| Algorithm            | Negative Edges | Dense Graph | Sparse Graph |
-| -------------------- | -------------- | ----------- | ------------ |
-| Floyd-Warshall       |      ✔         |      ✔✔    |      ❌      |
-| Dijkstra (all nodes) |      ❌        |      ✔     |       ✔      |
-| Johnson              |      ✔         |      ❌    |      ✔✔      |
-----------------------------------------------------------------------
-
-"""
-"""
-Johnson’s Algorithm
--------------------
-
-Purpose:
---------
-Find shortest distances between ALL pairs of vertices.
-
-Unlike:
-    - Dijkstra       → Single Source Shortest Path (no negative edges)
-    - Bellman-Ford   → Single Source (handles negative edges)
-    - Floyd-Warshall → All pairs, O(V^3)
-
-Johnson:
-    - Works for all pairs
-    - Works with negative edges
-    - Does NOT work if there is a negative cycle
-    - More efficient than Floyd-Warshall for sparse graphs
 
 ------------------------------------------------------------
-Core Idea:
+What we try to do (in simple language)
 ------------------------------------------------------------
 
 If we can somehow remove negative weights,
@@ -127,6 +93,36 @@ Steps:
 
 5) Run Dijkstra from each vertex
 6) Convert distances back to original weights
+
+------------------------------------------------------------
+When to Use?
+------------------------------------------------------------
+- Sparse graphs
+- Graph has negative edges
+- No negative cycle
+- Large V where Floyd-Warshall is too slow
+
+
+"""
+
+"""
+Johnson’s Algorithm
+-------------------
+
+Purpose:
+--------
+Find shortest distances between ALL pairs of vertices.
+
+Unlike:
+    - Dijkstra       → Single Source Shortest Path (no negative edges)
+    - Bellman-Ford   → Single Source (handles negative edges)
+    - Floyd-Warshall → All pairs, O(V^3)
+
+Johnson:
+    - Works for all pairs
+    - Works with negative edges
+    - Does NOT work if there is a negative cycle
+    - More efficient than Floyd-Warshall for sparse graphs
 
 ------------------------------------------------------------
 Time Complexity:
@@ -153,13 +149,6 @@ When to Use?
 - No negative cycle
 - Large V where Floyd-Warshall is too slow
 
-----------------------------------------------------------------------
-| Algorithm            | Negative Edges | Dense Graph | Sparse Graph |
-| -------------------- | -------------- | ----------- | ------------ |
-| Floyd-Warshall       |      ✔         |      ✔✔    |      ❌      |
-| Dijkstra (all nodes) |      ❌        |      ✔     |       ✔      |
-| Johnson              |      ✔         |      ❌    |      ✔✔      |
-----------------------------------------------------------------------
 
 """
 
@@ -288,13 +277,12 @@ def johnson(graph):
 
 
 if __name__ == "__main__":
-
     # Adjacency List Representation
     graph = [
-        [(1, 3), (3, 7)],       # 0
-        [(0, 8), (2, 2)],       # 1
-        [(0, 5), (3, 1)],       # 2
-        [(0, 2), (1, -1)]       # 3
+        [(1, 3), (3, 7)],  # 0
+        [(0, 8), (2, 2)],  # 1
+        [(0, 5), (3, 1)],  # 2
+        [(0, 2), (1, -1)],  # 3
     ]
 
     johnson(graph)

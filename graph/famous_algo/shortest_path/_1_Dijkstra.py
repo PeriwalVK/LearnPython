@@ -10,7 +10,7 @@ Finds shortest distance from a given source to all other nodes in a graph.
 IMPORTANT CONDITIONS
 ------------------------------------------------
 1. Graph can be directed or undirected.
-2. must NOT contain negative edges.
+2. must NOT contain NEGATIVE EDGES.
 3. Vertices numbered 0 to n-1.
 4. adjacency list.
 
@@ -35,6 +35,19 @@ For dense graph:
 
 Space Complexity:
     O(V + E)
+
+-----------------------------------------
+What we try to do (in simple language)
+-----------------------------------------
+
+1) Initialize distance array
+2) Initialize min-heap with (0, source)
+3) While min-heap is not empty:
+    3a) Pop min from min-heap
+    3b) If this is best path to this popped node till now -> then Relax all edges of this popped node
+4) Return distance array
+
+
 """
 
 import heapq
@@ -74,22 +87,23 @@ def dijkstra(n, graph, source):
     min_heap = [(0, source)]
 
     while min_heap:
-        current_dist, node = heapq.heappop(min_heap)
+        dist_of_node, node = heapq.heappop(min_heap)
 
-        # If we already found a better path, skip
-        # bcz heap had already picked it before and processed it
-        # and its neighbours have already been considered using that better path
-        if current_dist > distance[node]:
+        # If we already have had a better one than this, then skip this,
+        # bcz heap has already considered and processed this node using that best path till now
+        #     and its neighbours have already been considered using that better path
+        if distance[node] < dist_of_node:
             continue
 
         # Step 3: Explore neighbors
         for neighbor, weight in graph[node]:
-            new_distance = current_dist + weight
+            # new potential distance of neighbour
+            new_distance = dist_of_node + weight
 
-            # Relaxation step
+            # Relaxation step: if we just found a new best path for a neighbour
             if new_distance < distance[neighbor]:
-                distance[neighbor] = new_distance
-                parents[neighbor] = node
+                distance[neighbor] = new_distance  # recorded this new best
+                parents[neighbor] = node  # recorded current parent as per this new best
                 heapq.heappush(min_heap, (new_distance, neighbor))
 
     print(parents)
@@ -98,19 +112,19 @@ def dijkstra(n, graph, source):
     # Step 4: Print shortest paths
     print(f"All Shortest paths from {source} are: ")
     for node in range(n):
+        if distance[node] == float("inf"):
+            print(f"""DESTINATION: {node}\t UNREACHABLE""")
+            continue
+
         curr_node = node
         curr_path = []
         while curr_node is not None:
             curr_path.append(curr_node)
             curr_node = parents[curr_node]
+
         curr_path.reverse()
-        if distance[node] == float("inf"):
-            print(f"""DESTINATION: {node}\t UNREACHABLE""")
-            continue
-        else:
-            print(
-                f"""DESTINATION: {node}\t LENGTH: {distance[node]}\t PATH: {" -> ".join(str(i) for i in curr_path)}"""
-            )
+        path = " -> ".join(str(i) for i in curr_path)
+        print(f"""DESTINATION: {node}\t LENGTH: {distance[node]}\t PATH: {path}""")
 
     return distance
 
