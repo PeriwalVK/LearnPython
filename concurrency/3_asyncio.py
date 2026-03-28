@@ -124,6 +124,7 @@ KEY TERMINOLOGY:
 ================
 • Coroutine: A function defined with 'async def' that can be paused/resumed
 • Awaitable: Object that can be used with 'await' (coroutines, tasks, futures)
+        They implement a special __await__() method under the hood
 • Task: A wrapper around a coroutine, scheduled to run on the event loop 
         (i.e. a wrapped couroutine that can be executed independently)
         (Tasks are how we actually run coroutine concurrently)
@@ -155,14 +156,14 @@ async def _2_basic_concepts():
     # Creating a coroutine object (doesn't execute it!)
     coroutine_obj = my_first_coroutine()
 
-    print(f"Coroutine object: {coroutine_obj}")
-    print(f"Type: {type(coroutine_obj)}")
-    print("\tNotice the coroutine function hasn't started running yet...")
-    print("\tbcz it'll just create coroutine_obj but not schedule it on our event loop")
-    print(
-        "\tusing 'await coroutine_obj' or 'asyncio.run(coroutine_obj)' "
-        "\n\t\t=> will schedule them and run them to completion at the same time"
-    )
+    print(f"""
+    Coroutine object: {coroutine_obj}
+    Type: {type(coroutine_obj)}
+        Notice the coroutine function hasn't started running yet...
+        bcz it'll just create coroutine_obj but not schedule it on our event loop
+        using 'await coroutine_obj' or 'asyncio.run(coroutine_obj)'
+            => will schedule them and run them to completion at the same time
+    """)
 
     # Must close unused coroutine to avoid warning
     coroutine_obj.close()
@@ -191,6 +192,7 @@ async def _2_basic_concepts():
         print("Starting data processing...")
 
         # 'await' pauses this coroutine until fetch_data completes
+        # yaani it schedules and tb tk idhar se hilega nhi jb tk fetch_data ka run complete nhi ho jaata
         data = await fetch_data()
 
         print(f"Processing: {data}")
@@ -234,8 +236,8 @@ async def _2_basic_concepts():
         loop = asyncio.get_running_loop()
 
         future1, future2 = loop.create_future(), loop.create_future()
-        print(f"5.1 Created future1: {future1}")
-        print(f"5.1 Created future2: {future2}")
+        print(f"5.1 Created successful future1: {future1}")
+        print(f"5.1 Created exception wala future2: {future2}")
 
         future1.set_result("manual_result")
         future2.set_exception(Exception("manual_exception"))
@@ -284,16 +286,19 @@ async def _2_basic_concepts():
         return f"Result of {param}"
 
     async def _2_5_lifecycle_example():
-        task1 = asyncio.create_task(fetch_data_async_sleep(1))
-        task2 = asyncio.create_task(fetch_data_async_sleep(2))
-        result2 = await task2
+        task1 = asyncio.create_task(fetch_data_async_sleep(1))  # schedules the task
+        task2 = asyncio.create_task(fetch_data_async_sleep(2))  # schedules the task
+        # yaani ab concurrent execution chaalu
+        #   -> yaani event loop can start picking up these tasks and executing them whenever it gets a chance
+
+        result2 = await task2  # will wait for task2 to to complete, tb tk hilega nhi
         # Jaruri nahi ki task 2 pahle pick hoga
         # (event loop to jo bhi ready rhega kisi ko bhi run kr skta hai
         #     ==> task 1 bhi ho skta bcz dono hi scheduled ho chuke hai
         #     ==> event loop uses FIFO queue -> so task1 hi jayega iss case me),
-        # but ye guarantee hai ki jb tk task 2 complete na ho tb tk idhar se hilega nahi
+        # but ye guarantee hai ki jb tk task 2 complete na ho tb tk apna code iss line se hilega nahi
         print("Task 2 fully completed")
-        result1 = await task1
+        result1 = await task1  # will wait for task1 to to complete, tb tk hilega nhi
         print("Task 1 fully completed")
         return [result1, result2]
 
@@ -303,7 +308,7 @@ async def _2_basic_concepts():
     print(results)
 
     t2 = time.perf_counter()
-    print(f"Finished in {t2 - t1:.2f} seconds")
+    print(f"Finished in {t2 - t1:.2f} seconds")  # 2 seconds
 
     # ------------------------------------------------------------------------------
     # 2.6 Event Loop Lifecycle Example (using time.sleep)
@@ -347,7 +352,7 @@ async def _2_basic_concepts():
     print(results)
 
     t2 = time.perf_counter()
-    print(f"Finished in {t2 - t1:.2f} seconds")
+    print(f"Finished in {t2 - t1:.2f} seconds")  # 3 seconds
 
 
 # ================================================================================
@@ -497,11 +502,11 @@ async def _4_tasks_creating_and_managing_tasks():
 
         async def slow_operation():
             await asyncio.sleep(0.5)
-            return "Done!"
+            return "All Izz Well"
 
         async def failing_operation():
             await asyncio.sleep(0.2)
-            raise ValueError("Something went wrong!")
+            raise ValueError("This is an Exception as planned!")
 
         print("\n--- Task with No Exception  [task.result()] ---")
 
@@ -544,9 +549,9 @@ async def _4_tasks_creating_and_managing_tasks():
     print_subsection("4.2 Cancelling Tasks - [task.cancel()]")
 
     async def custom_sleep(delay: float, step: int):
-        print(f"step-{step}: before awaiting sleep {delay} block")
+        print(f"\tstep-{step}: before awaiting sleep {delay} block")
         await asyncio.sleep(delay)  # ✔️ suspension point
-        print(f"step-{step}: after awaiting sleep {delay} block")
+        print(f"\tstep-{step}: after awaiting sleep {delay} block")
 
     async def cancellable_task(name: str):
         """A task that can be cancelled."""
@@ -664,7 +669,8 @@ async def _4_tasks_creating_and_managing_tasks():
                         "[OUTER_TASK]: After sleeping"
                     )  # wont get printed, and go to catch block
 
-                result = await asyncio.shield(critical_operation())
+                critical_coroutine = critical_operation()
+                result = await asyncio.shield(critical_coroutine)
                 # """
                 # if this line is reached before cancel() is called -> means scheduled ✔️
                 #   then shielded task will run to complete,
@@ -678,6 +684,7 @@ async def _4_tasks_creating_and_managing_tasks():
                 )
                 raise
 
+        # TODO: repeated code, can be done in using only one function, by passing some bool flag
         async def outer_task_critical_task():
             """Outer task that shields the critical operation."""
             try:
@@ -770,7 +777,7 @@ async def _5_gather_coroutines():
 
         elapsed = time.perf_counter() - start
 
-        print(f"\nAll fetches completed in {elapsed:.2f}s")
+        print(f"\nAll fetches completed in {elapsed:.2f}s")  # 1.5 seconds
         print("Coroutines Results:")
         for result in results:
             print(f"  - {result}")
@@ -810,12 +817,12 @@ async def _5_gather_coroutines():
 
     print_subsection("5.2 Gather with Exception Handling")
 
-    async def may_fail(name: str, should_fail: bool) -> str:
+    async def may_fail(task_name: str, should_fail: bool) -> str:
         """A coroutine that may raise an exception."""
         await asyncio.sleep(0.5)
         if should_fail:
-            raise ValueError(f"{name} failed!")
-        return f"{name} succeeded"
+            raise ValueError(f"This is {task_name} exception msg!")
+        return f"This is {task_name} successful return msg!"
 
     async def gather_exception_handling():
         """Handle exceptions in gather()."""
@@ -832,9 +839,9 @@ async def _5_gather_coroutines():
         print("1. Default behavior (exception propagates):")
         try:
             results = await asyncio.gather(
-                may_fail("Task-A", False),
-                may_fail("Task-B", True),  # This will fail
-                may_fail("Task-C", False),
+                may_fail("Task-A", should_fail=False),
+                may_fail("Task-B", should_fail=True),  # This will fail
+                may_fail("Task-C", should_fail=False),
             )
         except ValueError as e:
             print(f"   Exception caught: {e}")
@@ -845,9 +852,9 @@ async def _5_gather_coroutines():
         #   => each result is either the result_value or the exception
         print("\n2. With return_exceptions=True:")
         results = await asyncio.gather(
-            may_fail("Task-A", False),
-            may_fail("Task-B", True),
-            may_fail("Task-C", False),
+            may_fail("Task-A", should_fail=False),
+            may_fail("Task-B", should_fail=True),
+            may_fail("Task-C", should_fail=False),
             return_exceptions=True,
         )
 
@@ -1188,34 +1195,34 @@ async def _8_sleep_comparison():
     # time.sleep() - BLOCKS the entire event loop!
     print("1. time.sleep() - BLOCKING (Don't do this!)")
 
-    async def blocking_task(name: str):
+    async def blocking_task(name: str, sleep_time: int = 1):
         print(f"{name}: Starting")
-        time.sleep(1)  # This blocks everything!
+        time.sleep(sleep_time)  # This blocks everything!
         print(f"{name}: Done")
 
     start = time.perf_counter()
     await asyncio.gather(
-        blocking_task("A"),
-        blocking_task("B"),
-        blocking_task("C"),
+        blocking_task("A", sleep_time=1),
+        blocking_task("B", sleep_time=1),
+        blocking_task("C", sleep_time=1),
     )
-    print(f"Total time (blocking): {time.perf_counter() - start:.2f}s")
+    print(f"Total time (blocking): {time.perf_counter() - start:.2f}s")  # 3 seconds
 
     # asyncio.sleep() - Allows other tasks to run
     print("\n2. asyncio.sleep() - NON-BLOCKING (Correct!)")
 
-    async def async_task(name: str):
+    async def async_task(name: str, sleep_time: int = 1):
         print(f"{name}: Starting")
-        await asyncio.sleep(1)  # Yields to other tasks
+        await asyncio.sleep(sleep_time)  # Yields to other tasks
         print(f"{name}: Done")
 
     start = time.perf_counter()
     await asyncio.gather(
-        async_task("A"),
-        async_task("B"),
-        async_task("C"),
+        async_task("A", sleep_time=1),
+        async_task("B", sleep_time=1),
+        async_task("C", sleep_time=1),
     )
-    print(f"Total time (non-blocking): {time.perf_counter() - start:.2f}s")
+    print(f"Total time (non-blocking): {time.perf_counter() - start:.2f}s")  # 1 second
 
 
 # # ================================================================================
@@ -1912,7 +1919,7 @@ async def _13_running_blocking_sync_code_in_async_context():
     # ProcessPoolExecutor needs to pickle the function to send it to child processes,
     # But Local/nested functions cannot be pickled
     # bcz they don't have a module-level reference
-    # Hence has to move this fn to the module level (outside any function).
+    # Hence for this demo, I had to move below fn to the module level (outside this function).
     # """
     # def cpu_bound_operation(n: int) -> int:
     #     """A CPU-bound operation."""
@@ -1947,7 +1954,7 @@ async def _13_running_blocking_sync_code_in_async_context():
         #     )
 
         elapsed = time.perf_counter() - start
-        print(f"All completed in {elapsed:.2f}s")
+        print(f"All completed in {elapsed:.2f}s")  # 1 second
         print(f"Results: {results}")
 
         # Using ProcessPoolExecutor (for CPU-bound tasks)
@@ -1993,13 +2000,17 @@ async def _13_running_blocking_sync_code_in_async_context():
             print(f"{prefx}: Completed! returning result", flush=True)
             return f"{prefx}: {value * 2}"
 
+        start = time.perf_counter()
+
         # to_thread is simpler than run_in_executor
         results = await asyncio.gather(
-            asyncio.to_thread(sync_function, "A", 1),
-            asyncio.to_thread(sync_function, "B", 2),
-            asyncio.to_thread(sync_function, "C", 3),
+            asyncio.to_thread(sync_function, "A", 1),  # 0.5 second
+            asyncio.to_thread(sync_function, "B", 2),  # 0.5 second
+            asyncio.to_thread(sync_function, "C", 3),  # 0.5 second
         )
 
+        elapsed = time.perf_counter() - start
+        print(f"All completed in {elapsed:.2f}s")  #  0.5 second
         print(f"Results: {results}")
 
     await to_thread_demo()
@@ -2374,13 +2385,18 @@ async def _17_taskgroups():
             print(f"{name}: Done!")
             return f"{name} result"
 
+        start = time.perf_counter()
+
         # context manager can also be async when they need to do IO-operations during setup or teardown
         async with asyncio.TaskGroup() as tg:
             # All the Tasks are automatically awaited when exiting the context
-            task1 = tg.create_task(worker("A", 0.5))
-            task2 = tg.create_task(worker("B", 0.3))
-            task3 = tg.create_task(worker("C", 0.4))
+            task1 = tg.create_task(worker("A", delay=0.5))  #  0.5 second
+            task2 = tg.create_task(worker("B", delay=0.3))  #  0.3 second
+            task3 = tg.create_task(worker("C", delay=0.4))  #  0.4 second
             # or can also write like `results = [tg.create_task(...), ...]`
+
+        elapsed = time.perf_counter() - start
+        print(f"All completed in {elapsed:.2f}s")  #  0.5 second
 
         # All tasks are guaranteed to be complete here
         print(f"Results: {task1.result()}, {task2.result()}, {task3.result()}")
