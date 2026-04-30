@@ -4,6 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/venv"
 TARGET_PYTHON="/c/Users/Admin/AppData/Local/Programs/Python/Python313/python"
+# Python 3.13.7
 
 echo -e "\n"
 echo "Using project directory: $SCRIPT_DIR"
