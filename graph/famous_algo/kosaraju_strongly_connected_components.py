@@ -63,13 +63,13 @@ from typing import List
 class Kosaraju:
     def __init__(self, vertices):
         self.V = vertices
-        self.graph = [[] for _ in range(vertices)]
+        self.graph_adj = [[] for _ in range(vertices)]
 
     # -----------------------------------------
     # Add directed edge
     # -----------------------------------------
     def add_edge(self, u, v):
-        self.graph[u].append(v)
+        self.graph_adj[u].append(v)
 
     # -----------------------------------------
     # Step 1:
@@ -80,7 +80,7 @@ class Kosaraju:
 
         visited[node] = True
 
-        for neighbor in self.graph[node]:
+        for neighbor in self.graph_adj[node]:
             if not visited[neighbor]:
                 self._dfs_fill_order(neighbor, visited, stack)
 
@@ -96,7 +96,7 @@ class Kosaraju:
         reversed_graph = Kosaraju(self.V)
 
         for node in range(self.V):
-            for neighbor in self.graph[node]:
+            for neighbor in self.graph_adj[node]:
                 reversed_graph.add_edge(neighbor, node)
 
         return reversed_graph
@@ -110,14 +110,14 @@ class Kosaraju:
         visited[node] = True
         component.append(node)
 
-        for neighbor in self.graph[node]:
+        for neighbor in self.graph_adj[node]:
             if not visited[neighbor]:
                 self._dfs_collect_scc(neighbor, visited, component)
 
     # -----------------------------------------
     # Main Function
     # -----------------------------------------
-    def find_sccs(self):
+    def find_strongly_connected_components(self):
 
         stack = []
         visited = [False] * self.V
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     g.add_edge(9, 6)
     g.add_edge(9, 10)
 
-    sccs = g.find_sccs()
+    sccs = g.find_strongly_connected_components()
 
     print("Strongly Connected Components:")
     for scc in sccs:

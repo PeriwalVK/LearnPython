@@ -9,9 +9,9 @@ class DisjointUnionSets:
         if self.parent[i] != i:
             self.parent[i] = self.find(self.parent[i])
 
-        print(
-            f"after find({i})new (self.parent, self.rank) is {list(zip(self.parent, self.rank))}"
-        )
+        # print(
+        #     f"after find({i})new (self.parent, self.rank) is {list(zip(self.parent, self.rank))}"
+        # )
 
         return self.parent[i]
 
@@ -33,9 +33,9 @@ class DisjointUnionSets:
             self.parent[yRoot] = xRoot
             self.rank[xRoot] += 1
 
-        print(
-            f"after Union({x}, {y}) new (self.parent, self.rank) is {list(zip(self.parent, self.rank))}"
-        )
+        # print(
+        #     f"after Union({x}, {y}) new (self.parent, self.rank) is {list(zip(self.parent, self.rank))}"
+        # )
 
 
 if __name__ == "__main__":
@@ -47,18 +47,15 @@ if __name__ == "__main__":
     dus.unionSets(3, 1)  # 3 is a friend of 1
 
     # Check if 4 is a friend of 0
-    if dus.find(4) == dus.find(0):
-        print("Yes")
-    else:
-        print("No")
-
     # Check if 1 is a friend of 0
-    if dus.find(1) == dus.find(0):
-        print("Yes")
-    else:
-        print("No")
+    for i,j in [(4,0),(1,0)]:
+        if dus.find(i) == dus.find(j):
+            print(f"yes: {i} is friend of {j}")
+        else:
+            print(f"no: {i} is not a friend of {j}")
+    
     dus.unionSets(3, 4)
 
     print("\n\n\n")
     for i in [2, 4]:
-        dus.find(i)
+        print(f"new parent of {i} is {dus.find(i)}")

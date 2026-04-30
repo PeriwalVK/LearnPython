@@ -2,6 +2,9 @@
 Python Program to count cycles of length n in a given graph.
 https://www.geeksforgeeks.org/dsa/cycles-of-length-n-in-an-undirected-and-connected-graph/
 
+Time Complexity: O(V^2)
+Space Complexity: O(V)
+
 """
 
 # Number of vertices
@@ -16,7 +19,7 @@ def DFS(graph, visited, n, curr_vert, start):
 
     # if the path of length (n-1) is found
     if n == 0:
-        # Check if vertex vert can end with vertex start
+        # Check if there is an edge from curr_vert to start
         if graph[curr_vert][start] == 1:
             count += 1
 

@@ -100,10 +100,10 @@ def prim(n, graph) -> List[Tuple[int, int, int]]:
     visited[start_node] = True
 
     for edge_weight, neighbor in graph[start_node]:
-        heapq.heappush(min_heap, (edge_weight, neighbor, start_node))
+        heapq.heappush(min_heap, (edge_weight, start_node, neighbor))
 
     while min_heap:
-        weight, node, parent = heapq.heappop(min_heap)
+        weight, parent, node = heapq.heappop(min_heap)
         if visited[node]:
             continue
 
@@ -116,7 +116,7 @@ def prim(n, graph) -> List[Tuple[int, int, int]]:
         # Push all adjacent edges
         for edge_weight, neighbor in graph[node]:
             if not visited[neighbor]:
-                heapq.heappush(min_heap, (edge_weight, neighbor, node))
+                heapq.heappush(min_heap, (edge_weight, node, neighbor))
 
     return mst
 
